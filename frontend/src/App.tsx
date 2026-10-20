@@ -5,7 +5,7 @@ import { MainLayout } from './layouts/MainLayout'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPlaceholder } from './pages/DashboardPlaceholder'
 import { PosPlaceholder } from './pages/PosPlaceholder'
-import { MenuPlaceholder } from './pages/MenuPlaceholder'
+import { MenuPage } from './pages/MenuPage'
 import { OrdersPlaceholder } from './pages/OrdersPlaceholder'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { LoadingSpinner } from './components/common/LoadingSpinner'
@@ -35,7 +35,7 @@ const AppRouter: React.FC = () => {
       pageContent = <PosPlaceholder />
       break
     case '/menu':
-      pageContent = <MenuPlaceholder />
+      pageContent = <MenuPage />
       break
     case '/orders':
     case '/reports':
