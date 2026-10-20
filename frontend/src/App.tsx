@@ -4,7 +4,7 @@ import { RouterProvider, useRouter } from './context/RouterContext'
 import { MainLayout } from './layouts/MainLayout'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPlaceholder } from './pages/DashboardPlaceholder'
-import { PosPlaceholder } from './pages/PosPlaceholder'
+import { PosPage } from './pages/PosPage'
 import { MenuPage } from './pages/MenuPage'
 import { OrdersPlaceholder } from './pages/OrdersPlaceholder'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -32,7 +32,7 @@ const AppRouter: React.FC = () => {
       pageContent = <DashboardPlaceholder />
       break
     case '/pos':
-      pageContent = <PosPlaceholder />
+      pageContent = <PosPage />
       break
     case '/menu':
       pageContent = <MenuPage />

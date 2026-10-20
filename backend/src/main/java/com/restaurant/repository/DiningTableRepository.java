@@ -13,4 +13,5 @@ public interface DiningTableRepository extends JpaRepository<DiningTableEntity, 
     Optional<DiningTableEntity> findByCode(String code);
     List<DiningTableEntity> findByStatus(TableStatus status);
     boolean existsByCode(String code);
+    boolean existsByCodeAndIdNot(String code, Long id);
 }
