@@ -13,5 +13,8 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
     Optional<PaymentEntity> findByOrderId(Long orderId);
     Optional<PaymentEntity> findByInvoiceCode(String invoiceCode);
+    boolean existsByOrderId(Long orderId);
+    boolean existsByInvoiceCode(String invoiceCode);
     Page<PaymentEntity> findByPaidAtBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
+    Page<PaymentEntity> findAllByOrderByPaidAtDesc(Pageable pageable);
 }

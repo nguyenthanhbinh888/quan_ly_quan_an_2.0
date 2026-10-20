@@ -6,6 +6,8 @@ import { MenuItem, Category } from '../types/menu';
 import { tableService } from '../services/tableService';
 import { orderService } from '../services/orderService';
 import { menuService } from '../services/menuService';
+import { paymentService } from '../services/paymentService';
+import { Payment, PaymentPreview, PaymentMethod } from '../types/payment';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -57,6 +59,16 @@ export const PosPage: React.FC = () => {
   const [cancelReason, setCancelReason] = useState<string>('');
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState<boolean>(false);
+
+  // State Modal Thanh toán & Biên lai (Giai đoạn 9)
+  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
+  const [paymentPreview, setPaymentPreview] = useState<PaymentPreview | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [amountPaidInput, setAmountPaidInput] = useState<string>('');
+  const [paymentSubmitting, setPaymentSubmitting] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [receiptModalOpen, setReceiptModalOpen] = useState<boolean>(false);
+  const [completedPayment, setCompletedPayment] = useState<Payment | null>(null);
 
   // Load danh sách bàn và thực đơn
   const loadTables = async () => {
@@ -821,7 +833,7 @@ export const PosPage: React.FC = () => {
                     <Button
                       variant="danger"
                       size="sm"
-                      disabled={orderItemSubmitting}
+                      disabled={orderItemSubmitting || paymentSubmitting}
                       onClick={() => {
                         setCancelReason('');
                         setCancelError(null);
@@ -833,16 +845,40 @@ export const PosPage: React.FC = () => {
                     </Button>
 
                     <Button
-                      variant="primary"
+                      variant="secondary"
                       size="sm"
-                      disabled={orderItemSubmitting}
+                      disabled={orderItemSubmitting || paymentSubmitting}
                       onClick={() => {
                         setOrderModalOpen(false);
                         loadTables();
                       }}
-                      style={{ flex: 2 }}
+                      style={{ flex: 1 }}
                     >
-                      Xong / Lưu đơn
+                      Đóng
+                    </Button>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={orderItemSubmitting || paymentSubmitting || activeOrder.items.length === 0}
+                      onClick={async () => {
+                        try {
+                          setPaymentSubmitting(true);
+                          setPaymentError(null);
+                          const preview = await paymentService.getPaymentPreview(activeOrder.id);
+                          setPaymentPreview(preview);
+                          setPaymentMethod('CASH');
+                          setAmountPaidInput(preview.finalAmount.toString());
+                          setPaymentModalOpen(true);
+                        } catch (err: any) {
+                          alert(err?.message || 'Không thể mở thanh toán');
+                        } finally {
+                          setPaymentSubmitting(false);
+                        }
+                      }}
+                      style={{ flex: 2, background: '#10b981', borderColor: '#10b981', color: '#fff', fontWeight: 700 }}
+                    >
+                      💳 Thanh toán
                     </Button>
                   </div>
                 </div>
@@ -1016,6 +1052,270 @@ export const PosPage: React.FC = () => {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL THANH TOÁN (GIAI ĐOẠN 9 - CASH & QR TRANSFER)      */}
+      {/* ========================================================= */}
+      {paymentModalOpen && paymentPreview && (
+        <Modal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            if (!paymentSubmitting) setPaymentModalOpen(false);
+          }}
+          title={`Thanh Toán — ${paymentPreview.orderCode} (${paymentPreview.tableName})`}
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const paidVal = paymentMethod === 'BANK_TRANSFER' ? paymentPreview.finalAmount : parseFloat(amountPaidInput);
+              if (isNaN(paidVal) || paidVal < paymentPreview.finalAmount) {
+                setPaymentError(`Số tiền thanh toán phải tối thiểu là ${formatCurrency(paymentPreview.finalAmount)}`);
+                return;
+              }
+              try {
+                setPaymentSubmitting(true);
+                setPaymentError(null);
+                const payment = await paymentService.processPayment({
+                  orderId: paymentPreview.orderId,
+                  paymentMethod,
+                  amountPaid: paidVal,
+                });
+                setCompletedPayment(payment);
+                setPaymentModalOpen(false);
+                setOrderModalOpen(false);
+                setActiveOrder(null);
+                setActiveTable(null);
+                setReceiptModalOpen(true);
+                loadTables();
+              } catch (err: any) {
+                setPaymentError(err?.message || 'Thanh toán thất bại');
+              } finally {
+                setPaymentSubmitting(false);
+              }
+            }}
+            style={{ width: '460px' }}
+          >
+            {paymentError && (
+              <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', marginBottom: '14px', fontSize: '13px' }}>
+                {paymentError}
+              </div>
+            )}
+
+            {/* Bill Preview Total */}
+            <div style={{ background: '#0f172a', padding: '14px 18px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#94a3b8', marginBottom: '4px' }}>
+                <span>Tiền món:</span>
+                <span>{formatCurrency(paymentPreview.subtotalAmount)}</span>
+              </div>
+              {paymentPreview.discountAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#22c55e', marginBottom: '4px' }}>
+                  <span>Giảm giá:</span>
+                  <span>-{formatCurrency(paymentPreview.discountAmount)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 800, color: '#f59e0b', borderTop: '1px solid #334155', paddingTop: '8px', marginTop: '6px' }}>
+                <span>Cần thanh toán:</span>
+                <span>{formatCurrency(paymentPreview.finalAmount)}</span>
+              </div>
+            </div>
+
+            {/* Phương thức thanh toán */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '8px' }}>
+                Hình thức thanh toán *
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CASH')}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: paymentMethod === 'CASH' ? '2px solid #22c55e' : '1px solid #334155',
+                    background: paymentMethod === 'CASH' ? 'rgba(34, 197, 94, 0.12)' : '#0f172a',
+                    color: paymentMethod === 'CASH' ? '#22c55e' : '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  💵 Tiền mặt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod('BANK_TRANSFER');
+                    setAmountPaidInput(paymentPreview.finalAmount.toString());
+                  }}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: paymentMethod === 'BANK_TRANSFER' ? '2px solid #38bdf8' : '1px solid #334155',
+                    background: paymentMethod === 'BANK_TRANSFER' ? 'rgba(56, 189, 248, 0.12)' : '#0f172a',
+                    color: paymentMethod === 'BANK_TRANSFER' ? '#38bdf8' : '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  💳 Chuyển khoản QR
+                </button>
+              </div>
+            </div>
+
+            {/* Khối tiền mặt */}
+            {paymentMethod === 'CASH' ? (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                  Tiền khách đưa (VNĐ)
+                </label>
+                <input
+                  type="number"
+                  min={paymentPreview.finalAmount}
+                  step="1000"
+                  value={amountPaidInput}
+                  onChange={(e) => setAmountPaidInput(e.target.value)}
+                  required
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '16px', fontWeight: 700 }}
+                />
+
+                {/* Quick Cash Buttons */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAmountPaidInput(paymentPreview.finalAmount.toString())}
+                    style={{ padding: '4px 8px', borderRadius: '4px', background: '#334155', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    Đủ tiền
+                  </button>
+                  {[50000, 100000, 200000, 500000].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setAmountPaidInput(val.toString())}
+                      style={{ padding: '4px 8px', borderRadius: '4px', background: '#334155', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      {formatCurrency(val)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tiền thừa tính tự động */}
+                <div style={{ marginTop: '12px', background: 'rgba(56, 189, 248, 0.08)', padding: '10px 14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', color: '#94a3b8' }}>Tiền thừa trả khách:</span>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#38bdf8' }}>
+                    {formatCurrency(Math.max(0, (parseFloat(amountPaidInput) || 0) - paymentPreview.finalAmount))}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Khối chuyển khoản QR */
+              <div style={{ textAlign: 'center', background: '#0f172a', padding: '16px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '8px' }}>
+                  Quét mã QR để chuyển khoản chính xác:
+                </div>
+                <div style={{ width: '130px', height: '130px', margin: '0 auto 10px', background: '#fff', borderRadius: '8px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* Mô phỏng VietQR */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=REST_PAY_${paymentPreview.orderCode}_${paymentPreview.finalAmount}`}
+                    alt="VietQR Payment"
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#f8fafc', fontWeight: 600 }}>
+                  Ngân hàng: MB Bank (Quân Đội) — STK: 8888.9999.6868
+                </div>
+                <div style={{ fontSize: '12px', color: '#38bdf8', marginTop: '2px' }}>
+                  Nội dung CK: <strong>{paymentPreview.orderCode}</strong>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="secondary" type="button" onClick={() => setPaymentModalOpen(false)}>
+                Hủy bỏ
+              </Button>
+              <Button variant="primary" type="submit" disabled={paymentSubmitting} style={{ background: '#10b981', borderColor: '#10b981' }}>
+                {paymentSubmitting ? 'Đang thanh toán...' : 'Xác nhận thanh toán'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL BIÊN LAI / HÓA ĐƠN HOÀN TẤT                         */}
+      {/* ========================================================= */}
+      {receiptModalOpen && completedPayment && (
+        <Modal
+          isOpen={receiptModalOpen}
+          onClose={() => setReceiptModalOpen(false)}
+          title={`Biên Lai Thanh Toán — ${completedPayment.invoiceCode}`}
+        >
+          <div style={{ width: '420px', background: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid #334155', color: '#f8fafc' }}>
+            <div style={{ textAlign: 'center', borderBottom: '1px dashed #334155', paddingBottom: '14px', marginBottom: '14px' }}>
+              <div style={{ fontSize: '28px', marginBottom: '4px' }}>✅</div>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 800, color: '#22c55e' }}>
+                THANH TOÁN THÀNH CÔNG!
+              </h2>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Mã hóa đơn: <strong>{completedPayment.invoiceCode}</strong></div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Bàn: <strong>{completedPayment.tableName || 'Mang về'}</strong> đã được giải phóng về TRỐNG.</div>
+            </div>
+
+            <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                <span>Tổng tiền món:</span>
+                <span>{formatCurrency(completedPayment.subtotalAmount)}</span>
+              </div>
+              {completedPayment.discountAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#22c55e' }}>
+                  <span>Giảm giá:</span>
+                  <span>-{formatCurrency(completedPayment.discountAmount)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, color: '#f59e0b', borderTop: '1px solid #334155', paddingTop: '8px' }}>
+                <span>Thực thu:</span>
+                <span>{formatCurrency(completedPayment.finalAmount)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+                <span>Hình thức:</span>
+                <span>{completedPayment.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản QR'}</span>
+              </div>
+              {completedPayment.paymentMethod === 'CASH' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#38bdf8', fontWeight: 600 }}>
+                  <span>Tiền thối lại:</span>
+                  <span>{formatCurrency(completedPayment.changeAmount)}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setReceiptModalOpen(false)}
+                style={{ flex: 1 }}
+              >
+                Đóng
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => window.print()}
+                style={{ flex: 1 }}
+              >
+                🖨 In hóa đơn
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

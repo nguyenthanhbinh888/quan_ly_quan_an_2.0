@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { DashboardPlaceholder } from './pages/DashboardPlaceholder'
 import { PosPage } from './pages/PosPage'
 import { MenuPage } from './pages/MenuPage'
+import { OrdersPage } from './pages/OrdersPage'
 import { OrdersPlaceholder } from './pages/OrdersPlaceholder'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { LoadingSpinner } from './components/common/LoadingSpinner'
@@ -38,6 +39,8 @@ const AppRouter: React.FC = () => {
       pageContent = <MenuPage />
       break
     case '/orders':
+      pageContent = <OrdersPage />
+      break
     case '/reports':
       pageContent = <OrdersPlaceholder />
       break

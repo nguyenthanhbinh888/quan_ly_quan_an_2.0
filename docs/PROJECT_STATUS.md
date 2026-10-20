@@ -1,7 +1,7 @@
 # Project Status - Tiến Độ Dự Án Quản Lý Quán Ăn
 
 ## Current phase
-**Giai đoạn 9 — Thanh Toán và Hóa Đơn (Payments & Invoices)**
+**Giai đoạn 10 — Báo Cáo và Thống Kê Doanh Thu (Dashboard & Reports)**
 
 ## Completed
 - [x] **Giai đoạn 0:** Chuẩn bị môi trường, kiểm tra công cụ, khởi tạo Git và cấu hình cơ sở.
@@ -12,45 +12,51 @@
 - [x] **Giai đoạn 5:** Xác thực và phân quyền (Spring Security & JWT, 10/10 tests passed).
 - [x] **Giai đoạn 6:** Khung giao diện và tích hợp API nền tảng (Frontend Shell & Reusable components).
 - [x] **Giai đoạn 7:** Quản lý danh mục và món ăn (Menu & Category Management, 16/16 backend tests passed).
-- [x] **Giai đoạn 8:** Quản lý bàn ăn và gọi món (Tables & Orders Management):
-  - **Backend DTOs & Validation:** `DiningTableRequest`, `DiningTableResponse`, `CreateOrderRequest`, `AddOrderItemRequest`, `UpdateOrderItemRequest`, `DiscountOrderRequest`, `CancelOrderRequest`, `OrderItemResponse`, `OrderResponse`.
-  - **Business Services:** `DiningTableService` & `DiningTableServiceImpl`, `OrderService` & `OrderServiceImpl`.
-    - Tự động sinh mã đơn hàng chuẩn quy cách `ORD-yyyyMMdd-XXXX`.
-    - Bắt buộc kiểm tra trạng thái bàn và tính khả dụng của món (`AVAILABLE` vs `OUT_OF_STOCK`).
-    - **Snapshot Pricing Integrity:** Lưu tên món (`item_name`) và đơn giá tại thời điểm gọi món (`price_at_order`), không bị ảnh hưởng khi giá menu thay đổi sau này.
-    - **Server Single Source of Truth:** Tự động tính toán tổng tiền tạm tính (`subtotalAmount`), chiết khấu (`discountAmount`) và tổng thực thu (`finalAmount`) hoàn toàn trên Server.
-    - Hủy đơn an toàn (`POST /api/orders/{id}/cancel`) kèm lý do hủy bắt buộc và tự động giải phóng bàn về `EMPTY`.
-  - **REST Controllers & Security:** `DiningTableController` (`/api/tables`), `OrderController` (`/api/orders`), phân quyền chặt chẽ (Admin sửa/xóa bàn, Staff mở đơn/gọi món).
-  - **Backend Integration Tests:** [TableAndOrderManagementTest.java](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/backend/src/test/java/com/restaurant/controller/TableAndOrderManagementTest.java) gồm 6 kịch bản kiểm thử toàn diện: RBAC phân quyền tạo bàn, mở bàn -> OCCUPIED, chặn tạo đơn trùng lặp, snapshot giá & tính tiền Server, từ chối món hết hàng, hủy đơn giải phóng bàn. Tổng 22/22 backend tests **PASS**.
+- [x] **Giai đoạn 8:** Quản lý bàn ăn và gọi món (Tables & Orders Management, 22/22 backend tests passed).
+- [x] **Giai đoạn 9:** Thanh toán và hóa đơn (Payments & Invoices):
+  - **Backend DTOs & Validation:** `PaymentRequest`, `PaymentResponse`, `PaymentPreviewResponse`.
+  - **Business Services:** `PaymentService` & `PaymentServiceImpl`:
+    - API xem trước thanh toán (`/api/payments/preview/{orderId}`) bảo đảm tính toán chính xác số tiền cần thu.
+    - Quy trình xác nhận thanh toán chạy trong 1 Transaction `@Transactional` duy nhất: Kiểm tra trạng thái đơn phải là `PENDING`, xác minh số tiền đưa vào (`amountPaid >= finalAmount`), sinh mã số hóa đơn tự động `INV-yyyyMMdd-XXXX`, cập nhật trạng thái đơn hàng sang `PAID`, và tự động giải phóng bàn ăn về trạng thái `EMPTY`.
+    - Chặn thanh toán trùng lặp (trả về lỗi `409 Conflict`), chặn thanh toán đơn rỗng hoặc đơn đã hủy (trả về `400 Bad Request`).
+    - Lưu trữ đầy đủ lịch sử hóa đơn: số tiền thực thu, tiền thối lại (`changeAmount`), phương thức thanh toán (`CASH` / `BANK_TRANSFER`), thời gian thanh toán và thu ngân thực hiện.
+  - **REST Controllers:** `PaymentController` (`/api/payments`): `preview`, thanh toán, tra cứu hóa đơn theo đơn hàng hoặc mã hóa đơn, danh sách lịch sử hóa đơn kèm phân trang và lọc theo ngày.
+  - **Backend Integration Tests:** [PaymentManagementTest.java](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/backend/src/test/java/com/restaurant/controller/PaymentManagementTest.java) gồm 6 kịch bản kiểm thử: Thanh toán tiền mặt + giải phóng bàn, thanh toán chuyển khoản, chặn thanh toán lặp 409, chặn trả thiếu tiền 400, chặn thanh toán đơn hủy 400, tra cứu biên lai theo mã. Tổng 28/28 backend tests **PASS**.
   - **Frontend UI & Features:**
-    - Types [table.ts](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/types/table.ts), [order.ts](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/types/order.ts) & Services [tableService.ts](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/services/tableService.ts), [orderService.ts](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/services/orderService.ts).
-    - Màn hình [PosPage.tsx](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/PosPage.tsx) thiết kế hiện đại:
-      - Thanh thống kê nhanh (Tổng bàn, Bàn trống, Đang phục vụ, Đã đặt).
-      - Bộ lọc trạng thái bàn nhanh dạng tabs/pills.
-      - Lưới sơ đồ bàn trực quan (Table Cards) hiển thị màu nhận diện trạng thái, số ghế, mã đơn và tổng tiền tạm tính.
-      - Bảng POS Gọi món (Order & Menu Split Interface): Cột trái chọn món nhanh theo danh mục và tìm kiếm; Cột phải giỏ món đơn hàng với nút điều chỉnh số lượng `+/-`, nhập ghi chú món, nút xóa món, xem tổng tiền do Server tính, nút áp dụng giảm giá và nút hủy đơn kèm modal lý do.
-      - Modal thêm/sửa bàn ăn cho Admin.
-    - Tích hợp định tuyến tại `App.tsx` và bổ sung styles `.table-card`, `.btn-warning` trong `index.css`.
-  - **Frontend Build Test:** `npm.cmd run build` -> **PASS (0 lỗi TypeScript, build thành công)**.
+    - Types [payment.ts](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/types/payment.ts) & Service [paymentService.ts](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/services/paymentService.ts).
+    - Tích hợp luồng thanh toán trực tiếp ngay trong [PosPage.tsx](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/PosPage.tsx):
+      - Nút "💳 Thanh toán" tiện lợi trên giỏ món đơn hàng.
+      - Modal thanh toán hỗ trợ 2 hình thức: **Tiền mặt** (nhập tiền khách đưa, phím bấm nhanh mệnh giá 50k, 100k, 200k, 500k, tự động tính tiền thối) hoặc **Chuyển khoản QR** (mô phỏng quét mã VietQR kèm số tài khoản và cú pháp chuyển khoản).
+      - Modal biên lai thanh toán thành công (Receipt Modal) với nút xem và in hóa đơn `🖨 In hóa đơn`. Bàn ăn trên sơ đồ tự động đổi ngay sang màu xanh `EMPTY`.
+    - Màn hình [OrdersPage.tsx](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/OrdersPage.tsx) quản lý lịch sử hóa đơn:
+      - Bảng danh sách hóa đơn chuyên nghiệp: mã hóa đơn, mã đơn, bàn ăn, thời gian, hình thức thanh toán, thu ngân, tổng tiền.
+      - Bộ lọc theo ngày linh hoạt (Hôm nay, Từ ngày -> Đến ngày) và phân trang.
+      - Modal xem lại biên lai chi tiết của bất kỳ hóa đơn nào trong quá khứ.
+    - Cập nhật định tuyến `App.tsx` cho `/orders` trỏ tới `OrdersPage`.
+  - **Frontend Build Test:** `npm.cmd run build` -> **PASS (0 lỗi TypeScript, đóng gói hoàn tất trong 660ms)**.
 
 ## Tests and commands
-- Backend tests: `mvn test` trong `backend/` -> **PASS (22/22 tests passed)**.
+- Backend tests: `mvn test` trong `backend/` -> **PASS (28/28 tests passed)**.
 - Frontend build: `npm.cmd run build` trong `frontend/` -> **PASS (tsc & vite build thành công)**.
 
 ## Known issues
 - Không có lỗi kỹ thuật phát sinh.
 
 ## Decisions awaiting approval
-- Xác nhận nghiệm thu Giai đoạn 8 để tiến hành triển khai **Giai đoạn 9 — Thanh Toán và Hóa Đơn (Payments & Invoices)**.
+- Xác nhận nghiệm thu Giai đoạn 9 để tiến hành triển khai **Giai đoạn 10 — Dashboard và Báo Cáo Doanh Thu (Dashboard & Reports)**.
 
 ## Next step
-Triển khai **Giai đoạn 9 — Thanh Toán và Hóa Đơn**:
+Triển khai **Giai đoạn 10 — Dashboard và Báo Cáo Doanh Thu**:
 - Backend:
-  - DTOs, Service, Controller cho Thanh toán (`/api/payments`): Xem trước thanh toán (`preview`), xác nhận thanh toán (`CASH`, `BANK_TRANSFER`), sinh mã hóa đơn duy nhất `INV-yyyyMMdd-XXXX`, cập nhật trạng thái đơn sang `PAID` và giải phóng bàn về `EMPTY` trong cùng một Transaction `@Transactional`.
-  - Ngăn chặn thanh toán lặp hoặc thanh toán đơn đã đóng/hủy.
-  - Lấy lịch sử hóa đơn thanh toán kèm thông tin nhân viên thu ngân.
-  - Viết Integration Test cho luồng thanh toán và xuất hóa đơn.
+  - Repository & Service tính toán các chỉ số kinh doanh thực tế từ CSDL:
+    - Doanh thu hôm nay, tổng số hóa đơn hôm nay, số bàn đang phục vụ.
+    - Doanh thu theo khoảng thời gian (7 ngày qua, tháng này).
+    - Top món ăn bán chạy nhất (Top Selling Dishes).
+  - Controller `/api/dashboard/stats` và `/api/dashboard/top-items`.
+  - Viết Integration Test kiểm tra tính toán chỉ số thống kê từ dữ liệu đơn hàng và hóa đơn thật.
 - Frontend:
-  - Modal / Màn hình Thanh toán đơn hàng: chọn phương thức thanh toán (Tiền mặt, Chuyển khoản QR), nhập tiền khách đưa, tự động tính tiền thừa trả khách.
-  - Màn hình / Modal xem & in hóa đơn thanh toán chuẩn mực, chuyên nghiệp cho quán ăn.
-  - Cập nhật trang Lịch sử hóa đơn (`OrdersPlaceholder` -> `OrdersPage` / `InvoicesPage`).
+  - Hoàn thiện trang [DashboardPage.tsx](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/DashboardPage.tsx) thay thế `DashboardPlaceholder.tsx`:
+    - 4 thẻ KPI nổi bật: Doanh thu hôm nay, Số hóa đơn đã thu, Số bàn đang có khách, Tỷ lệ lấp đầy bàn.
+    - Biểu đồ / Bảng phân tích doanh thu các ngày gần nhất.
+    - Danh sách Top 5 món ăn được gọi nhiều nhất kèm doanh số.
+    - Danh sách các hóa đơn thanh toán gần nhất (Recent Transactions).
