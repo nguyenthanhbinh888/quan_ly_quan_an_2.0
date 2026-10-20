@@ -1,0 +1,77 @@
+# ==========================================
+# Restaurant Management System - .gitignore
+# ==========================================
+
+# Secrets & Environment variables (CRITICAL: Do NOT commit!)
+.env
+.env.*
+!.env.example
+*.env
+application-local.properties
+application-local.yml
+application-secret.properties
+application-secret.yml
+**/secrets/
+**/config/secrets/
+
+# Java / Maven build output
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# Node / Frontend build output & dependencies
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/build/
+.npm
+.eslintcache
+.stylelintcache
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE & Editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.directory
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# Temporary files
+tmp/
+temp/
