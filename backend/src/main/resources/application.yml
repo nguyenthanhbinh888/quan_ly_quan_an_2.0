@@ -1,0 +1,14 @@
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: restaurant-backend
+  profiles:
+    active: local
+
+app:
+  version: 1.0.0-MVP
+  name: "Hệ Thống Quản Lý Quán Ăn API"

@@ -43,13 +43,52 @@ quan_ly_quan_an/
 
 ---
 
-## 4. Lộ trình triển khai (14 giai đoạn)
+## 4. Hướng dẫn chạy dự án (Getting Started)
 
-- **Giai đoạn 0:** Chuẩn bị môi trường & Git *(Hiện tại)*
-- **Giai đoạn 1:** Phân tích yêu cầu (`docs/REQUIREMENTS.md`)
-- **Giai đoạn 2:** Thiết kế kiến trúc, Database & API (`docs/DATABASE.md`, `docs/API.md`)
-- **Giai đoạn 3:** Khởi tạo Backend & Frontend skeleton
-- **Giai đoạn 4:** Kết nối MySQL & cấu trúc nền tảng Backend
+### 4.1. Khởi chạy Backend (Spring Boot)
+1. Di chuyển vào thư mục backend:
+   ```bash
+   cd backend
+   ```
+2. Chạy kiểm thử tự động:
+   ```bash
+   mvn test
+   ```
+3. Chạy ứng dụng ở chế độ local:
+   ```bash
+   mvn spring-boot:run
+   ```
+   Backend sẽ lắng nghe tại: `http://localhost:8080`  
+   Endpoint Health Check: `http://localhost:8080/api/health`
+
+### 4.2. Khởi chạy Frontend (React + TypeScript)
+1. Di chuyển vào thư mục frontend:
+   ```bash
+   cd frontend
+   ```
+2. Cài đặt các thư viện:
+   ```bash
+   npm.cmd install
+   ```
+3. Khởi chạy môi trường Dev:
+   ```bash
+   npm.cmd run dev
+   ```
+   Frontend sẽ mở tại: `http://localhost:3000`
+4. Đóng gói bản Production:
+   ```bash
+   npm.cmd run build
+   ```
+
+---
+
+## 5. Lộ trình triển khai (14 giai đoạn)
+
+- **Giai đoạn 0:** Chuẩn bị môi trường & Git (Hoàn tất)
+- **Giai đoạn 1:** Phân tích yêu cầu (`docs/REQUIREMENTS.md` - Hoàn tất)
+- **Giai đoạn 2:** Thiết kế kiến trúc, Database & API (`docs/DATABASE.md`, `docs/API.md` - Hoàn tất)
+- **Giai đoạn 3:** Khởi tạo Backend & Frontend skeleton (Hoàn tất)
+- **Giai đoạn 4:** Kết nối MySQL & cấu trúc nền tảng Backend (Tiếp theo)
 - **Giai đoạn 5:** Xác thực & phân quyền (Spring Security)
 - **Giai đoạn 6:** Khung giao diện Frontend & API client
 - **Giai đoạn 7:** Quản lý danh mục & món ăn
@@ -59,3 +98,4 @@ quan_ly_quan_an/
 - **Giai đoạn 11:** Kiểm thử tổng thể & rà soát bảo mật
 - **Giai đoạn 12:** Đóng gói & triển khai
 - **Giai đoạn 13:** Bảo trì & tính năng mở rộng
+
