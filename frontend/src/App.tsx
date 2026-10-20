@@ -3,11 +3,10 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { RouterProvider, useRouter } from './context/RouterContext'
 import { MainLayout } from './layouts/MainLayout'
 import { LoginPage } from './pages/LoginPage'
-import { DashboardPlaceholder } from './pages/DashboardPlaceholder'
+import { DashboardPage } from './pages/DashboardPage'
 import { PosPage } from './pages/PosPage'
 import { MenuPage } from './pages/MenuPage'
 import { OrdersPage } from './pages/OrdersPage'
-import { OrdersPlaceholder } from './pages/OrdersPlaceholder'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { LoadingSpinner } from './components/common/LoadingSpinner'
 
@@ -30,7 +29,7 @@ const AppRouter: React.FC = () => {
   switch (path) {
     case '/':
     case '/login':
-      pageContent = <DashboardPlaceholder />
+      pageContent = <DashboardPage />
       break
     case '/pos':
       pageContent = <PosPage />
@@ -42,7 +41,7 @@ const AppRouter: React.FC = () => {
       pageContent = <OrdersPage />
       break
     case '/reports':
-      pageContent = <OrdersPlaceholder />
+      pageContent = <DashboardPage />
       break
     default:
       pageContent = <NotFoundPage />
