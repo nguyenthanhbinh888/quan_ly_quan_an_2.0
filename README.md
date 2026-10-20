@@ -43,7 +43,16 @@ quan_ly_quan_an/
 
 ---
 
-## 4. Hướng dẫn chạy dự án (Getting Started)
+## 4. Tài khoản kiểm thử mặc định (Local Test Accounts)
+
+| Tài khoản (Username) | Mật khẩu (Password) | Vai trò (Role) | Quyền hạn |
+|---|---|---|---|
+| `admin` | `Admin123@` | `ADMIN` | Toàn quyền quản trị thực đơn, bàn, nhân viên, báo cáo |
+| `staff01` | `Admin123@` | `STAFF` | Nhân viên phục vụ gọi món, mở bàn, kiểm tra đơn |
+
+---
+
+## 5. Hướng dẫn chạy dự án (Getting Started)
 
 ### 4.1. Khởi chạy Backend (Spring Boot)
 1. Di chuyển vào thư mục backend:
@@ -82,15 +91,15 @@ quan_ly_quan_an/
 
 ---
 
-## 5. Lộ trình triển khai (14 giai đoạn)
+## 6. Lộ trình triển khai (14 giai đoạn)
 
 - **Giai đoạn 0:** Chuẩn bị môi trường & Git (Hoàn tất)
 - **Giai đoạn 1:** Phân tích yêu cầu (`docs/REQUIREMENTS.md` - Hoàn tất)
 - **Giai đoạn 2:** Thiết kế kiến trúc, Database & API (`docs/DATABASE.md`, `docs/API.md` - Hoàn tất)
 - **Giai đoạn 3:** Khởi tạo Backend & Frontend skeleton (Hoàn tất)
-- **Giai đoạn 4:** Kết nối MySQL & cấu trúc nền tảng Backend (Tiếp theo)
-- **Giai đoạn 5:** Xác thực & phân quyền (Spring Security)
-- **Giai đoạn 6:** Khung giao diện Frontend & API client
+- **Giai đoạn 4:** Kết nối MySQL & cấu trúc nền tảng Backend (Hoàn tất)
+- **Giai đoạn 5:** Xác thực & phân quyền (Spring Security & JWT - Hoàn tất)
+- **Giai đoạn 6:** Khung giao diện Frontend & API client (Tiếp theo)
 - **Giai đoạn 7:** Quản lý danh mục & món ăn
 - **Giai đoạn 8:** Quản lý bàn & đơn hàng
 - **Giai đoạn 9:** Thanh toán & hóa đơn

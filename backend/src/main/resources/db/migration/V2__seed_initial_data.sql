@@ -24,8 +24,8 @@ INSERT INTO dining_tables (code, name, capacity, status) VALUES
 ('VIP01', 'Phòng VIP 01', 12, 'EMPTY')
 ON DUPLICATE KEY UPDATE code=code;
 
--- 3. Tài khoản quản trị ban đầu (mật khẩu băm BCrypt của "Admin123@")
+-- 3. Tài khoản quản trị ban đầu (mật khẩu mặc định là: "Admin123@")
 INSERT INTO users (username, password_hash, full_name, phone, role, status) VALUES
-('admin', '$2a$10$WdZfXy7WqK43sLz11t2gK.472wKq0g4VbUcb/gJ37f1XmE0k4LpQe', 'Quản Trị Viên', '0901234567', 'ADMIN', 'ACTIVE'),
-('staff01', '$2a$10$WdZfXy7WqK43sLz11t2gK.472wKq0g4VbUcb/gJ37f1XmE0k4LpQe', 'Nhân Viên Phục Vụ 1', '0908765432', 'STAFF', 'ACTIVE')
+('admin', '$2a$10$BuT4gXogjk7u6o3uGMILuOtkuePZR8azKzQDf3z7vjB6ILzZROTpO', 'Quản Trị Viên', '0901234567', 'ADMIN', 'ACTIVE'),
+('staff01', '$2a$10$b8EDCFkd2.IK.30Ze2wp/uRm9FeyOMDMBL01fIfFWo/SC9WPBj1ca', 'Nhân Viên Phục Vụ 1', '0908765432', 'STAFF', 'ACTIVE')
 ON DUPLICATE KEY UPDATE username=username;
