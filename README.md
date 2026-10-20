@@ -54,57 +54,52 @@ quan_ly_quan_an/
 
 ## 5. Hướng dẫn chạy dự án (Getting Started)
 
-### 4.1. Khởi chạy Backend (Spring Boot)
-1. Di chuyển vào thư mục backend:
+### Cách 1: Khởi chạy nhanh bằng 1-Click Script (Khuyến khích)
+Tại thư mục gốc dự án:
+- Nhấp đúp chuột vào file **`start-all.bat`** để tự động khởi chạy cả Backend (port 8080) và Frontend (port 3000).
+- Hoặc chạy độc lập: `start-backend.bat` / `start-frontend.bat`.
+
+### Cách 2: Khởi chạy bằng Dòng Lệnh Thủ Công
+1. **Khởi chạy Backend:**
    ```bash
    cd backend
-   ```
-2. Chạy kiểm thử tự động:
-   ```bash
-   mvn test
-   ```
-3. Chạy ứng dụng ở chế độ local:
-   ```bash
    mvn spring-boot:run
+   # hoặc chạy trực tiếp file JAR:
+   java -jar target/restaurant-backend-0.0.1-SNAPSHOT.jar
    ```
-   Backend sẽ lắng nghe tại: `http://localhost:8080`  
-   Endpoint Health Check: `http://localhost:8080/api/health`
+   Backend lắng nghe tại: `http://localhost:8080` (Health: `/api/health`)
 
-### 4.2. Khởi chạy Frontend (React + TypeScript)
-1. Di chuyển vào thư mục frontend:
+2. **Khởi chạy Frontend:**
    ```bash
    cd frontend
-   ```
-2. Cài đặt các thư viện:
-   ```bash
-   npm.cmd install
-   ```
-3. Khởi chạy môi trường Dev:
-   ```bash
    npm.cmd run dev
    ```
-   Frontend sẽ mở tại: `http://localhost:3000`
-4. Đóng gói bản Production:
+   Frontend giao diện mở tại: `http://localhost:3000`
+
+3. **Khởi chạy trọn gói qua Docker Compose:**
    ```bash
-   npm.cmd run build
+   docker compose up -d
    ```
+
+*Xem chi tiết hướng dẫn vận hành, sao lưu và xử lý sự cố tại:* [`docs/DEPLOYMENT.md`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/docs/DEPLOYMENT.md).
 
 ---
 
-## 6. Lộ trình triển khai (14 giai đoạn)
+## 6. Lộ trình triển khai (Project Roadmap)
 
-- **Giai đoạn 0:** Chuẩn bị môi trường & Git (Hoàn tất)
-- **Giai đoạn 1:** Phân tích yêu cầu (`docs/REQUIREMENTS.md` - Hoàn tất)
-- **Giai đoạn 2:** Thiết kế kiến trúc, Database & API (`docs/DATABASE.md`, `docs/API.md` - Hoàn tất)
-- **Giai đoạn 3:** Khởi tạo Backend & Frontend skeleton (Hoàn tất)
-- **Giai đoạn 4:** Kết nối MySQL & cấu trúc nền tảng Backend (Hoàn tất)
-- **Giai đoạn 5:** Xác thực & phân quyền (Spring Security & JWT - Hoàn tất)
-- **Giai đoạn 6:** Khung giao diện Frontend & API client (Tiếp theo)
-- **Giai đoạn 7:** Quản lý danh mục & món ăn
-- **Giai đoạn 8:** Quản lý bàn & đơn hàng
-- **Giai đoạn 9:** Thanh toán & hóa đơn
-- **Giai đoạn 10:** Dashboard & báo cáo doanh thu
-- **Giai đoạn 11:** Kiểm thử tổng thể & rà soát bảo mật
-- **Giai đoạn 12:** Đóng gói & triển khai
-- **Giai đoạn 13:** Bảo trì & tính năng mở rộng
+- [x] **Giai đoạn 0:** Chuẩn bị môi trường & Git
+- [x] **Giai đoạn 1:** Phân tích yêu cầu (`docs/REQUIREMENTS.md`)
+- [x] **Giai đoạn 2:** Thiết kế kiến trúc, Database & API (`docs/DATABASE.md`, `docs/API.md`)
+- [x] **Giai đoạn 3:** Khởi tạo Backend & Frontend skeleton
+- [x] **Giai đoạn 4:** Kết nối MySQL & cấu trúc nền tảng Backend
+- [x] **Giai đoạn 5:** Xác thực & phân quyền (Spring Security & JWT)
+- [x] **Giai đoạn 6:** Khung giao diện Frontend & API client
+- [x] **Giai đoạn 7:** Quản lý danh mục & món ăn
+- [x] **Giai đoạn 8:** Quản lý bàn & đơn hàng (POS)
+- [x] **Giai đoạn 9:** Thanh toán & hóa đơn (Tiền mặt / QR VietQR)
+- [x] **Giai đoạn 10:** Dashboard & báo cáo doanh thu
+- [x] **Giai đoạn 11:** Kiểm thử tổng thể & rà soát bảo mật (`docs/TEST_PLAN.md`, 42/42 tests PASS)
+- [x] **Giai đoạn 12:** Đóng gói & triển khai (`docs/DEPLOYMENT.md`, JAR, Dockerfile, Docker Compose, 1-Click scripts)
+- [ ] **Giai đoạn 13:** Bảo trì & tính năng mở rộng
+
 
