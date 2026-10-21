@@ -30,6 +30,16 @@ export const removeAuthToken = (): void => {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
 
+export const getImageUrl = (url?: string | null): string => {
+  if (!url || typeof url !== 'string' || !url.trim()) return ''
+  const trimmed = url.trim()
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed
+  }
+  const origin = BASE_URL.replace(/\/api\/?$/, '')
+  return `${origin}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`
+}
+
 interface RequestOptions extends RequestInit {
   timeout?: number
 }

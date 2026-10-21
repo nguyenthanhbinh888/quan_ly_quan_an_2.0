@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { IconClose } from './Icons'
 
 export interface ModalProps {
   isOpen: boolean
@@ -7,6 +8,7 @@ export interface ModalProps {
   children: React.ReactNode
   footer?: React.ReactNode
   maxWidth?: string
+  className?: string
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -15,7 +17,8 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   footer,
-  maxWidth = '500px',
+  maxWidth = '520px',
+  className = '',
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -23,23 +26,34 @@ export const Modal: React.FC<ModalProps> = ({
         onClose()
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      window.addEventListener('keydown', handleKeyDown)
+    }
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [isOpen, onClose])
 
   if (!isOpen) return null
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div
-        className="modal-container"
+        className={`modal-container ${className}`.trim()}
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <h3 className="modal-title">{title}</h3>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Đóng">
-            ✕
+          <button
+            type="button"
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label="Đóng cửa sổ"
+          >
+            <IconClose size={18} strokeWidth={2} />
           </button>
         </div>
         <div className="modal-body">{children}</div>

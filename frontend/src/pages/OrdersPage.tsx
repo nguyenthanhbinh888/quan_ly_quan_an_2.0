@@ -6,6 +6,15 @@ import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
+import {
+  IconReceipt,
+  IconRefresh,
+  IconFilter,
+  IconPrinter,
+  IconCash,
+  IconQr,
+  IconAlertCircle,
+} from '../components/common/Icons';
 
 export const OrdersPage: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -98,138 +107,153 @@ export const OrdersPage: React.FC = () => {
   };
 
   return (
-    <div className="orders-page" style={{ paddingBottom: '40px' }}>
+    <div className="page-container">
       {/* Page Header */}
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#f8fafc' }}>
-            Lịch Sử Hóa Đơn & Thanh Toán
-          </h1>
-          <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '14px' }}>
-            Tra cứu tất cả hóa đơn đã thanh toán, phương thức tiền mặt và chuyển khoản QR
+          <h1 className="page-title">Lịch Sử Hóa Đơn & Giao Dịch</h1>
+          <p className="page-subtitle">
+            Tra cứu toàn bộ hóa đơn đã tất toán, phương thức thu tiền và chi tiết từng bàn ăn
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="secondary" onClick={() => loadPayments(currentPage)}>
+        <div style={{ display: 'flex', gap: '0.65rem' }}>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => loadPayments(currentPage)}
+            icon={<IconRefresh size={16} />}
+          >
             Làm mới
           </Button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <form
-        onSubmit={handleFilterSubmit}
-        style={{
-          background: '#1e293b',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          border: '1px solid #334155',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          marginBottom: '24px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>Từ ngày:</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
-          />
-        </div>
+      <form onSubmit={handleFilterSubmit} className="card" style={{ padding: '0.85rem 1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label className="form-label" style={{ marginBottom: 0 }}>Từ ngày:</label>
+            <input
+              type="date"
+              className="form-control"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ padding: '0.4rem 0.65rem', width: 'auto' }}
+            />
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>Đến ngày:</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
-          />
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label className="form-label" style={{ marginBottom: 0 }}>Đến ngày:</label>
+            <input
+              type="date"
+              className="form-control"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ padding: '0.4rem 0.65rem', width: 'auto' }}
+            />
+          </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="primary" size="sm" type="submit">
-            Lọc hóa đơn
-          </Button>
-          <Button variant="secondary" size="sm" type="button" onClick={handleSetToday}>
-            Hôm nay
-          </Button>
-          {(startDate || endDate) && (
-            <Button variant="outline" size="sm" type="button" onClick={handleResetFilter}>
-              Xóa bộ lọc
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              icon={<IconFilter size={14} />}
+            >
+              Lọc hóa đơn
             </Button>
-          )}
-        </div>
+            <Button variant="secondary" size="sm" type="button" onClick={handleSetToday}>
+              Hôm nay
+            </Button>
+            {(startDate || endDate) && (
+              <Button variant="outline" size="sm" type="button" onClick={handleResetFilter}>
+                Xóa bộ lọc
+              </Button>
+            )}
+          </div>
 
-        <div style={{ marginLeft: 'auto', fontSize: '13px', color: '#94a3b8' }}>
-          Tìm thấy <strong>{totalElements}</strong> hóa đơn
+          <div style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            Tìm thấy <strong className="tabular-nums">{totalElements}</strong> hóa đơn
+          </div>
         </div>
       </form>
 
       {/* Error state */}
       {error && (
-        <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', marginBottom: '20px' }}>
-          {error}
+        <div className="alert alert-danger">
+          <IconAlertCircle size={18} />
+          <span>{error}</span>
         </div>
       )}
 
       {/* Content Table */}
       {loading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center' }}>
-          <LoadingSpinner />
-          <p style={{ marginTop: '12px', color: '#94a3b8' }}>Đang tải lịch sử hóa đơn...</p>
-        </div>
+        <LoadingSpinner text="Đang tải danh sách hóa đơn thanh toán..." />
       ) : payments.length === 0 ? (
         <EmptyState
-          title="Không có hóa đơn nào"
-          description="Chưa có lượt thanh toán nào phù hợp với khoảng thời gian đã chọn."
+          icon={<IconReceipt size={44} strokeWidth={1.5} />}
+          title="Không tìm thấy hóa đơn nào"
+          description="Chưa có giao dịch thanh toán nào được ghi nhận trong khoảng thời gian đã chọn."
         />
       ) : (
-        <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+        <div className="table-responsive">
+          <table className="data-table">
             <thead>
-              <tr style={{ background: '#0f172a', borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>
-                <th style={{ padding: '14px 16px' }}>Mã Hóa Đơn</th>
-                <th style={{ padding: '14px 16px' }}>Mã Đơn / Bàn</th>
-                <th style={{ padding: '14px 16px' }}>Thời Gian</th>
-                <th style={{ padding: '14px 16px' }}>Phương Thức</th>
-                <th style={{ padding: '14px 16px' }}>Thu Ngân</th>
-                <th style={{ padding: '14px 16px', textAlign: 'right' }}>Tổng Thực Thu</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center' }}>Thao Tác</th>
+              <tr>
+                <th>Mã Hóa Đơn</th>
+                <th>Mã Đơn / Bàn</th>
+                <th>Thời Gian Thanh Toán</th>
+                <th>Phương Thức</th>
+                <th>Thu Ngân</th>
+                <th className="text-right">Tổng Thực Thu</th>
+                <th className="text-center">Thao Tác</th>
               </tr>
             </thead>
             <tbody>
               {payments.map(p => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #334155', color: '#f8fafc' }}>
-                  <td style={{ padding: '14px 16px', fontWeight: 700, color: '#f59e0b' }}>
-                    🧾 {p.invoiceCode}
+                <tr key={p.id}>
+                  <td>
+                    <span style={{ fontWeight: 700, color: 'var(--primary)' }} className="tabular-nums">
+                      {p.invoiceCode}
+                    </span>
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
+                  <td>
                     <div style={{ fontWeight: 600 }}>{p.orderCode}</div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>{p.tableName || 'Mang về'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.tableName || 'Mang về'}</div>
                   </td>
-                  <td style={{ padding: '14px 16px', color: '#cbd5e1' }}>
+                  <td className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
                     {formatDateTime(p.paidAt)}
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
+                  <td>
                     <Badge variant={p.paymentMethod === 'CASH' ? 'success' : 'info'}>
-                      {p.paymentMethod === 'CASH' ? '💵 Tiền mặt' : '💳 Chuyển khoản QR'}
+                      {p.paymentMethod === 'CASH' ? (
+                        <>
+                          <IconCash size={14} />
+                          <span>Tiền mặt</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconQr size={14} />
+                          <span>Chuyển khoản QR</span>
+                        </>
+                      )}
                     </Badge>
                   </td>
-                  <td style={{ padding: '14px 16px', color: '#cbd5e1' }}>
+                  <td style={{ color: 'var(--text-muted)' }}>
                     {p.processedByName || 'Nhân viên'}
                   </td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: '#22c55e', fontSize: '15px' }}>
+                  <td className="text-right tabular-nums" style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>
                     {formatCurrency(p.finalAmount)}
                   </td>
-                  <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                    <Button variant="secondary" size="sm" onClick={() => handleViewReceipt(p)}>
-                      Xem biên lai
+                  <td className="text-center">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleViewReceipt(p)}
+                      icon={<IconReceipt size={14} />}
+                    >
+                      Biên lai
                     </Button>
                   </td>
                 </tr>
@@ -239,18 +263,27 @@ export const OrdersPage: React.FC = () => {
 
           {/* Pagination Footer */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderTop: '1px solid #334155' }}>
-              <div style={{ color: '#94a3b8', fontSize: '13px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.85rem 1.25rem',
+                borderTop: '1px solid var(--border-subtle)',
+                background: 'var(--bg-surface-subtle)',
+              }}
+            >
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }} className="tabular-nums">
                 Trang {currentPage + 1} / {totalPages}
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <Button
                   variant="secondary"
                   size="sm"
                   disabled={currentPage === 0}
                   onClick={() => loadPayments(currentPage - 1)}
                 >
-                  ← Trang trước
+                  Trang trước
                 </Button>
                 <Button
                   variant="secondary"
@@ -258,7 +291,7 @@ export const OrdersPage: React.FC = () => {
                   disabled={currentPage >= totalPages - 1}
                   onClick={() => loadPayments(currentPage + 1)}
                 >
-                  Trang sau →
+                  Trang sau
                 </Button>
               </div>
             </div>
@@ -273,99 +306,118 @@ export const OrdersPage: React.FC = () => {
         <Modal
           isOpen={receiptModalOpen}
           onClose={() => setReceiptModalOpen(false)}
-          title={`Hóa Đơn — ${selectedInvoice.invoiceCode}`}
+          title={`Hóa Đơn Bán Lẻ — ${selectedInvoice.invoiceCode}`}
+          maxWidth="440px"
         >
-          <div style={{ width: '420px', background: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid #334155', color: '#f8fafc' }}>
-            <div style={{ textAlign: 'center', borderBottom: '1px dashed #334155', paddingBottom: '14px', marginBottom: '14px' }}>
-              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 800, color: '#f59e0b' }}>
-                NHÀ HÀNG QUÁN ĂN VIỆT
+          <div
+            style={{
+              background: '#ffffff',
+              padding: '1.25rem',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-main)',
+            }}
+          >
+            <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--border-strong)', paddingBottom: '0.85rem', marginBottom: '0.85rem' }}>
+              <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)' }}>
+                HƯƠNG VIỆT RESTAURANT
               </h2>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Địa chỉ: 123 Đường Ẩm Thực, Quận 1, TP.HCM</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Hotline: 0901.234.567</div>
-              <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 700, color: '#22c55e' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Địa chỉ: 123 Đường Ẩm Thực, Quận 1, TP.HCM</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Hotline: 0901.234.567</div>
+              <div style={{ marginTop: '0.65rem', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
                 HÓA ĐƠN THANH TOÁN
               </div>
             </div>
 
-            <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '14px', borderBottom: '1px dashed #334155', paddingBottom: '12px' }}>
+            <div style={{ fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.85rem', borderBottom: '1px dashed var(--border-strong)', paddingBottom: '0.85rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94a3b8' }}>Số hóa đơn:</span>
-                <strong>{selectedInvoice.invoiceCode}</strong>
+                <span style={{ color: 'var(--text-muted)' }}>Số hóa đơn:</span>
+                <strong className="tabular-nums">{selectedInvoice.invoiceCode}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94a3b8' }}>Mã đơn:</span>
-                <span>{selectedInvoice.orderCode}</span>
+                <span style={{ color: 'var(--text-muted)' }}>Mã đơn:</span>
+                <span className="tabular-nums">{selectedInvoice.orderCode}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94a3b8' }}>Bàn ăn:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Bàn phục vụ:</span>
                 <span>{selectedInvoice.tableName || 'Mang về'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94a3b8' }}>Thời gian:</span>
-                <span>{formatDateTime(selectedInvoice.paidAt)}</span>
+                <span style={{ color: 'var(--text-muted)' }}>Thời gian:</span>
+                <span className="tabular-nums">{formatDateTime(selectedInvoice.paidAt)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94a3b8' }}>Thu ngân:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Thu ngân:</span>
                 <span>{selectedInvoice.processedByName}</span>
               </div>
             </div>
 
             {/* Danh sách món */}
-            <div style={{ marginBottom: '14px', borderBottom: '1px dashed #334155', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px' }}>
+            <div style={{ marginBottom: '0.85rem', borderBottom: '1px dashed var(--border-strong)', paddingBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
                 <span style={{ flex: 2 }}>Món ăn</span>
                 <span style={{ width: '40px', textAlign: 'center' }}>SL</span>
                 <span style={{ flex: 1, textAlign: 'right' }}>Thành tiền</span>
               </div>
               {selectedInvoice.items?.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.35rem' }}>
                   <span style={{ flex: 2 }}>{item.itemName}</span>
-                  <span style={{ width: '40px', textAlign: 'center' }}>{item.quantity}</span>
-                  <span style={{ flex: 1, textAlign: 'right' }}>{formatCurrency(item.subtotal)}</span>
+                  <span style={{ width: '40px', textAlign: 'center' }} className="tabular-nums">{item.quantity}</span>
+                  <span style={{ flex: 1, textAlign: 'right' }} className="tabular-nums">{formatCurrency(item.subtotal)}</span>
                 </div>
               ))}
             </div>
 
             {/* Chi tiết thanh toán */}
-            <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+            <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
                 <span>Tiền món:</span>
-                <span>{formatCurrency(selectedInvoice.subtotalAmount)}</span>
+                <span className="tabular-nums">{formatCurrency(selectedInvoice.subtotalAmount)}</span>
               </div>
               {selectedInvoice.discountAmount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#22c55e' }}>
-                  <span>Giảm giá:</span>
-                  <span>-{formatCurrency(selectedInvoice.discountAmount)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--status-empty)' }}>
+                  <span>Chiết khấu / Giảm giá:</span>
+                  <span className="tabular-nums">-{formatCurrency(selectedInvoice.discountAmount)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 800, color: '#f59e0b', borderTop: '1px solid #334155', paddingTop: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '1.15rem',
+                  fontWeight: 800,
+                  color: 'var(--primary)',
+                  borderTop: '1px solid var(--border-subtle)',
+                  paddingTop: '0.5rem',
+                }}
+              >
                 <span>Tổng cộng:</span>
-                <span>{formatCurrency(selectedInvoice.finalAmount)}</span>
+                <span className="tabular-nums">{formatCurrency(selectedInvoice.finalAmount)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
                 <span>Hình thức:</span>
                 <span>{selectedInvoice.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản QR'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
                 <span>Tiền khách trả:</span>
-                <span>{formatCurrency(selectedInvoice.amountPaid)}</span>
+                <span className="tabular-nums">{formatCurrency(selectedInvoice.amountPaid)}</span>
               </div>
               {selectedInvoice.paymentMethod === 'CASH' && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#38bdf8', fontWeight: 600 }}>
-                  <span>Tiền thừa thối lại:</span>
-                  <span>{formatCurrency(selectedInvoice.changeAmount)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--status-empty)', fontWeight: 600 }}>
+                  <span>Tiền thối lại:</span>
+                  <span className="tabular-nums">{formatCurrency(selectedInvoice.changeAmount)}</span>
                 </div>
               )}
             </div>
 
-            <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginBottom: '16px' }}>
+            <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '1rem' }}>
               Cảm ơn quý khách và hẹn gặp lại!
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '0.65rem' }}>
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 onClick={() => setReceiptModalOpen(false)}
                 style={{ flex: 1 }}
               >
@@ -373,11 +425,12 @@ export const OrdersPage: React.FC = () => {
               </Button>
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={() => window.print()}
                 style={{ flex: 1 }}
+                icon={<IconPrinter size={16} />}
               >
-                🖨 In hóa đơn
+                In hóa đơn
               </Button>
             </div>
           </div>
@@ -386,3 +439,5 @@ export const OrdersPage: React.FC = () => {
     </div>
   );
 };
+
+export default OrdersPage;

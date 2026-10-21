@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DiningTable, DiningTableRequest, TableStatus } from '../types/table';
-import { Order, OrderItem } from '../types/order';
+import { Order } from '../types/order';
 import { MenuItem, Category } from '../types/menu';
 import { tableService } from '../services/tableService';
 import { orderService } from '../services/orderService';
@@ -13,6 +13,24 @@ import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
+import {
+  IconTable,
+  IconUsers,
+  IconPlus,
+  IconRefresh,
+  IconSearch,
+  IconClose,
+  IconEdit,
+  IconTrash,
+  IconCash,
+  IconQr,
+  IconPrinter,
+  IconCheckCircle,
+  IconAlertCircle,
+  IconDiscount,
+  IconCalendar,
+  IconClock,
+} from '../components/common/Icons';
 
 export const PosPage: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +66,11 @@ export const PosPage: React.FC = () => {
   const [tableSubmitting, setTableSubmitting] = useState<boolean>(false);
   const [tableFormError, setTableFormError] = useState<string | null>(null);
 
+  // State Modal Đặt Bàn / Giữ Chỗ
+  const [reserveModalOpen, setReserveModalOpen] = useState<boolean>(false);
+  const [tableToReserve, setTableToReserve] = useState<DiningTable | null>(null);
+  const [reserveSubmitting, setReserveSubmitting] = useState<boolean>(false);
+
   // State Modal Giảm giá
   const [discountModalOpen, setDiscountModalOpen] = useState<boolean>(false);
   const [discountInput, setDiscountInput] = useState<string>('');
@@ -60,7 +83,7 @@ export const PosPage: React.FC = () => {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState<boolean>(false);
 
-  // State Modal Thanh toán & Biên lai (Giai đoạn 9)
+  // State Modal Thanh toán & Biên lai
   const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
   const [paymentPreview, setPaymentPreview] = useState<PaymentPreview | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
@@ -133,28 +156,23 @@ export const PosPage: React.FC = () => {
     });
   }, [menuItems, selectedCategoryId, menuSearch]);
 
-  // -------------------------------------------------------------
   // Xử lý mở bàn & xem đơn
-  // -------------------------------------------------------------
   const handleOpenTableOrder = async (table: DiningTable) => {
     setActiveTable(table);
-    setOrderError(null);
     setOrderModalOpen(true);
     setOrderLoading(true);
+    setOrderError(null);
 
     try {
-      if (table.status === 'EMPTY') {
-        // Mở đơn mới tự động cho bàn trống
+      if (table.status === 'EMPTY' || table.status === 'RESERVED') {
         const newOrder = await orderService.createOrder({
           tableId: table.id,
           orderType: 'DINE_IN',
           note: `Khách ngồi ${table.name}`,
         });
         setActiveOrder(newOrder);
-        // Refresh danh sách bàn để cập nhật trạng thái OCCUPIED
         loadTables();
       } else {
-        // Tải đơn đang hoạt động của bàn
         const currentOrder = await orderService.getActiveOrderByTableId(table.id);
         setActiveOrder(currentOrder);
       }
@@ -178,7 +196,6 @@ export const PosPage: React.FC = () => {
         note: note.trim() ? note.trim() : undefined,
       });
       setActiveOrder(updated);
-      // Xóa ghi chú tạm của món sau khi thêm
       setItemNotes(prev => ({ ...prev, [item.id]: '' }));
       loadTables();
     } catch (err: any) {
@@ -188,12 +205,11 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  // Cập nhật số lượng món
-  const handleUpdateItemQuantity = async (orderItem: OrderItem, delta: number) => {
+  // Tăng/giảm số lượng
+  const handleUpdateItemQuantity = async (orderItem: any, delta: number) => {
     if (!activeOrder) return;
     const newQty = orderItem.quantity + delta;
     if (newQty <= 0) {
-      // Nếu giảm về 0 thì hỏi xóa món
       handleRemoveItem(orderItem.id);
       return;
     }
@@ -214,13 +230,13 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  // Xóa món khỏi đơn
-  const handleRemoveItem = async (itemId: number) => {
+  // Xóa món
+  const handleRemoveItem = async (orderItemId: number) => {
     if (!activeOrder) return;
     try {
       setOrderItemSubmitting(true);
       setOrderError(null);
-      const updated = await orderService.removeOrderItem(activeOrder.id, itemId);
+      const updated = await orderService.removeOrderItem(activeOrder.id, orderItemId);
       setActiveOrder(updated);
       loadTables();
     } catch (err: any) {
@@ -230,23 +246,23 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  // Áp dụng giảm giá
+  // Giảm giá
   const handleApplyDiscountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeOrder) return;
-    const amount = parseFloat(discountInput);
-    if (isNaN(amount) || amount < 0) {
-      setDiscountError('Số tiền giảm giá phải là số không âm');
+    const val = parseFloat(discountInput) || 0;
+    if (val < 0) {
+      setDiscountError('Số tiền giảm giá không được âm');
       return;
     }
-    if (amount > activeOrder.subtotalAmount) {
-      setDiscountError(`Số tiền giảm giá không được vượt quá tổng tiền món (${formatCurrency(activeOrder.subtotalAmount)})`);
+    if (val > activeOrder.subtotalAmount) {
+      setDiscountError(`Số tiền giảm giá không được vượt quá tiền món (${formatCurrency(activeOrder.subtotalAmount)})`);
       return;
     }
     try {
       setDiscountSubmitting(true);
       setDiscountError(null);
-      const updated = await orderService.applyDiscount(activeOrder.id, { discountAmount: amount });
+      const updated = await orderService.applyDiscount(activeOrder.id, { discountAmount: val });
       setActiveOrder(updated);
       setDiscountModalOpen(false);
       loadTables();
@@ -257,7 +273,7 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  // Hủy toàn bộ đơn
+  // Hủy đơn
   const handleCancelOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeOrder) return;
@@ -281,9 +297,7 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  // -------------------------------------------------------------
-  // Quản lý Bàn ăn (Admin CRUD)
-  // -------------------------------------------------------------
+  // Quản lý bàn ăn (Admin)
   const handleOpenAddTable = () => {
     setTableEditing(null);
     setTableForm({ code: '', name: '', capacity: 4, status: 'EMPTY' });
@@ -307,7 +321,7 @@ export const PosPage: React.FC = () => {
   const handleDeleteTable = async (table: DiningTable, e: React.MouseEvent) => {
     e.stopPropagation();
     if (table.status !== 'EMPTY') {
-      alert('Chỉ có thể xóa bàn khi đang ở trạng thái Trống (EMPTY)');
+      alert('Chỉ có thể xóa bàn khi đang ở trạng thái Trống');
       return;
     }
     if (!window.confirm(`Bạn có chắc chắn muốn xóa bàn "${table.name}" (${table.code}) không?`)) {
@@ -318,6 +332,42 @@ export const PosPage: React.FC = () => {
       loadTables();
     } catch (err: any) {
       alert(err?.message || 'Lỗi khi xóa bàn');
+    }
+  };
+
+  // Đặt bàn / Giữ chỗ
+  const handlePromptReserveTable = (table: DiningTable, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTableToReserve(table);
+    setReserveModalOpen(true);
+  };
+
+  const handleConfirmReserveTable = async () => {
+    if (!tableToReserve) return;
+    try {
+      setReserveSubmitting(true);
+      await tableService.updateTableStatus(tableToReserve.id, 'RESERVED');
+      setReserveModalOpen(false);
+      setTableToReserve(null);
+      loadTables();
+    } catch (err: any) {
+      alert(err?.message || 'Lỗi khi đặt bàn');
+    } finally {
+      setReserveSubmitting(false);
+    }
+  };
+
+  // Hủy giữ chỗ bàn
+  const handleCancelReservation = async (table: DiningTable, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Bạn có chắc chắn muốn hủy đặt bàn cho ${table.name} (${table.code}) và trả về bàn Trống không?`)) {
+      return;
+    }
+    try {
+      await tableService.updateTableStatus(table.id, 'EMPTY');
+      loadTables();
+    } catch (err: any) {
+      alert(err?.message || 'Lỗi khi hủy đặt bàn');
     }
   };
 
@@ -354,126 +404,143 @@ export const PosPage: React.FC = () => {
   };
 
   return (
-    <div className="pos-page">
+    <div className="page-container">
       {/* Header Toolbar */}
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#f8fafc' }}>
-            Sơ Đồ Bàn Ăn & Gọi Món (POS)
-          </h1>
-          <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '14px' }}>
-            Quản lý vị trí bàn, mở đơn phục vụ tức thì và ghi nhận món ăn chính xác
+          <h1 className="page-title">Sơ Đồ Bàn Ăn & Gọi Món (POS)</h1>
+          <p className="page-subtitle">
+            Giám sát trạng thái bàn ăn, thao tác gọi món tốc độ cao và xử lý thanh toán quầy thu ngân
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <Button variant="secondary" onClick={loadTables}>
+        <div style={{ display: 'flex', gap: '0.65rem' }}>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={loadTables}
+            icon={<IconRefresh size={16} />}
+          >
             Làm mới
           </Button>
           {isAdmin && (
-            <Button variant="primary" onClick={handleOpenAddTable}>
-              + Thêm bàn mới
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleOpenAddTable}
+              icon={<IconPlus size={16} />}
+            >
+              Thêm bàn mới
             </Button>
           )}
         </div>
       </div>
 
       {/* Stats Summary Bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#38bdf8' }}>
-            🪑
+      <div className="stat-cards-grid">
+        <div className="stat-card">
+          <div className="stat-icon blue-bg">
+            <IconTable size={22} strokeWidth={2} />
           </div>
-          <div>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>Tổng số bàn</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#f8fafc' }}>{stats.total}</div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#22c55e' }}>
-            🟢
-          </div>
-          <div>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>Bàn trống</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#22c55e' }}>{stats.empty}</div>
+          <div className="stat-content">
+            <span className="stat-label">Tổng số bàn</span>
+            <span className="stat-value tabular-nums">{stats.total} bàn</span>
+            <span className="stat-hint">Quy mô phục vụ quầy</span>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#f59e0b' }}>
-            🟠
+        <div className="stat-card">
+          <div className="stat-icon green-bg">
+            <IconCheckCircle size={22} strokeWidth={2} />
           </div>
-          <div>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>Đang dùng</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#f59e0b' }}>{stats.occupied}</div>
+          <div className="stat-content">
+            <span className="stat-label">Bàn sẵn sàng</span>
+            <span className="stat-value tabular-nums" style={{ color: 'var(--status-empty)' }}>
+              {stats.empty} bàn
+            </span>
+            <span className="stat-hint">Sẵn sàng nhận khách mới</span>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#6366f1' }}>
-            🔵
+        <div className="stat-card">
+          <div className="stat-icon orange-bg">
+            <IconUsers size={22} strokeWidth={2} />
           </div>
-          <div>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>Đã đặt trước</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#6366f1' }}>{stats.reserved}</div>
+          <div className="stat-content">
+            <span className="stat-label">Đang phục vụ</span>
+            <span className="stat-value tabular-nums" style={{ color: 'var(--status-occupied)' }}>
+              {stats.occupied} bàn
+            </span>
+            <span className="stat-hint">Có khách đang dùng bữa</span>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon purple-bg">
+            <IconDiscount size={22} strokeWidth={2} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-label">Đã đặt trước</span>
+            <span className="stat-value tabular-nums" style={{ color: 'var(--status-reserved)' }}>
+              {stats.reserved} bàn
+            </span>
+            <span className="stat-hint">Giữ chỗ trước giờ đón</span>
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
+      <div className="categories-tab-bar">
         <button
-          className={`category-pill ${statusFilter === 'ALL' ? 'active' : ''}`}
+          type="button"
+          className={`category-pill ${statusFilter === 'ALL' ? 'category-pill-active' : ''}`}
           onClick={() => setStatusFilter('ALL')}
-          style={{ padding: '8px 16px', borderRadius: '20px', border: 'none', background: statusFilter === 'ALL' ? '#e11d48' : '#1e293b', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
         >
-          Tất cả ({tables.length})
+          Tất cả bàn ({tables.length})
         </button>
         <button
-          className={`category-pill ${statusFilter === 'EMPTY' ? 'active' : ''}`}
+          type="button"
+          className={`category-pill ${statusFilter === 'EMPTY' ? 'category-pill-active' : ''}`}
           onClick={() => setStatusFilter('EMPTY')}
-          style={{ padding: '8px 16px', borderRadius: '20px', border: 'none', background: statusFilter === 'EMPTY' ? '#22c55e' : '#1e293b', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
         >
           Bàn trống ({stats.empty})
         </button>
         <button
-          className={`category-pill ${statusFilter === 'OCCUPIED' ? 'active' : ''}`}
+          type="button"
+          className={`category-pill ${statusFilter === 'OCCUPIED' ? 'category-pill-active' : ''}`}
           onClick={() => setStatusFilter('OCCUPIED')}
-          style={{ padding: '8px 16px', borderRadius: '20px', border: 'none', background: statusFilter === 'OCCUPIED' ? '#f59e0b' : '#1e293b', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
         >
           Đang phục vụ ({stats.occupied})
         </button>
         <button
-          className={`category-pill ${statusFilter === 'RESERVED' ? 'active' : ''}`}
+          type="button"
+          className={`category-pill ${statusFilter === 'RESERVED' ? 'category-pill-active' : ''}`}
           onClick={() => setStatusFilter('RESERVED')}
-          style={{ padding: '8px 16px', borderRadius: '20px', border: 'none', background: statusFilter === 'RESERVED' ? '#6366f1' : '#1e293b', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
         >
-          Đã đặt ({stats.reserved})
+          Đã đặt trước ({stats.reserved})
         </button>
       </div>
 
       {/* Error state */}
       {error && (
-        <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', marginBottom: '20px' }}>
-          {error}
+        <div className="alert alert-danger">
+          <IconAlertCircle size={18} />
+          <span>{error}</span>
         </div>
       )}
 
       {/* Loading state */}
       {loading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center' }}>
-          <LoadingSpinner />
-          <p style={{ marginTop: '12px', color: '#94a3b8' }}>Đang tải danh sách bàn ăn...</p>
-        </div>
+        <LoadingSpinner text="Đang tải sơ đồ bàn ăn..." />
       ) : filteredTables.length === 0 ? (
         <EmptyState
+          icon={<IconTable size={44} strokeWidth={1.5} />}
           title="Không tìm thấy bàn nào"
           description={statusFilter === 'ALL' ? 'Chưa có dữ liệu bàn ăn.' : 'Không có bàn nào phù hợp với bộ lọc đã chọn.'}
         />
       ) : (
         /* Table Grid */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
           {filteredTables.map(table => {
             const isOccupied = table.status === 'OCCUPIED';
             const isReserved = table.status === 'RESERVED';
@@ -481,83 +548,179 @@ export const PosPage: React.FC = () => {
             return (
               <div
                 key={table.id}
-                className="table-card"
+                className="card"
                 onClick={() => handleOpenTableOrder(table)}
                 style={{
-                  background: '#1e293b',
-                  borderRadius: '16px',
-                  border: isOccupied ? '2px solid #f59e0b' : isReserved ? '1px solid #6366f1' : '1px solid #334155',
-                  padding: '20px',
+                  padding: '1.25rem',
                   cursor: 'pointer',
-                  position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  minHeight: '180px',
-                  boxShadow: isOccupied ? '0 4px 20px rgba(245, 158, 11, 0.12)' : 'none',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  minHeight: '190px',
+                  borderColor: isOccupied ? 'var(--status-occupied-border)' : isReserved ? 'var(--status-reserved-border)' : 'var(--border-subtle)',
+                  background: isOccupied ? 'var(--status-occupied-bg)' : isReserved ? 'var(--status-reserved-bg)' : '#ffffff',
+                  boxShadow: isOccupied ? 'var(--shadow-sm)' : 'var(--shadow-xs)',
+                  transition: 'transform 0.15s ease, border-color 0.15s ease',
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '18px', fontWeight: 800, color: '#f8fafc', background: '#334155', padding: '4px 10px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span
+                        style={{
+                          fontSize: '1rem',
+                          fontWeight: 800,
+                          color: 'var(--text-main)',
+                          background: isOccupied ? '#ffffff' : 'var(--bg-surface-subtle)',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
+                      >
                         {table.code}
                       </span>
-                      <span style={{ color: '#94a3b8', fontSize: '13px' }}>
-                        👥 {table.capacity} chỗ
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <IconUsers size={14} />
+                        <span>{table.capacity} chỗ</span>
                       </span>
                     </div>
 
-                    <Badge variant={isOccupied ? 'warning' : isReserved ? 'info' : 'success'}>
-                      {isOccupied ? 'ĐANG DÙNG' : isReserved ? 'ĐÃ ĐẶT' : 'TRỐNG'}
+                    <Badge variant={isOccupied ? 'warning' : isReserved ? 'info' : 'success'} dot>
+                      {isOccupied ? 'Đang dùng' : isReserved ? 'Đã đặt' : 'Trống'}
                     </Badge>
                   </div>
 
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600, color: '#e2e8f0' }}>
+                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
                     {table.name}
                   </h3>
 
                   {isOccupied && (
-                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px 12px', borderRadius: '8px', marginTop: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600 }}>
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        padding: '0.6rem 0.85rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--status-occupied-border)',
+                        marginTop: '0.5rem',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.72rem', color: 'var(--status-occupied)', fontWeight: 700, textTransform: 'uppercase' }}>
                         {table.currentOrderCode || 'ĐƠN HOẠT ĐỘNG'}
                       </div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#f8fafc', marginTop: '2px' }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.1rem' }} className="tabular-nums">
                         {formatCurrency(table.currentOrderTotal)}
+                      </div>
+                    </div>
+                  )}
+
+                  {isReserved && (
+                    <div
+                      style={{
+                        background: '#fffbeb',
+                        padding: '0.6rem 0.85rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--status-reserved-border)',
+                        marginTop: '0.5rem',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.72rem', color: 'var(--status-reserved)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <IconClock size={13} />
+                        <span>ĐÃ ĐẶT TRƯỚC / GIỮ CHỖ</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                        Đang giữ chỗ trước giờ đón khách
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '12px' }}>
-                  <Button
-                    variant={isOccupied ? 'warning' : 'primary'}
-                    size="sm"
-                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      handleOpenTableOrder(table);
-                    }}
-                  >
-                    {isOccupied ? 'Xem & Gọi món' : 'Mở bàn / Gọi món'}
-                  </Button>
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderTop: '1px solid var(--border-subtle)',
+                    paddingTop: '0.75rem',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '0.4rem', flex: 1, flexWrap: 'wrap' }}>
+                    {isOccupied ? (
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                          e.stopPropagation();
+                          handleOpenTableOrder(table);
+                        }}
+                      >
+                        Xem & Gọi món
+                      </Button>
+                    ) : isReserved ? (
+                      <>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            handleOpenTableOrder(table);
+                          }}
+                        >
+                          Nhận bàn
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleCancelReservation(table, e)}
+                        >
+                          Hủy giữ
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            handleOpenTableOrder(table);
+                          }}
+                        >
+                          Mở bàn
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => handlePromptReserveTable(table, e)}
+                          icon={<IconCalendar size={13} />}
+                        >
+                          Đặt bàn
+                        </Button>
+                      </>
+                    )}
+                  </div>
 
                   {isAdmin && (
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
                       <button
-                        title="Sửa bàn"
+                        type="button"
+                        title="Sửa thông tin bàn"
                         onClick={(e) => handleOpenEditTable(table, e)}
-                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', fontSize: '14px' }}
+                        className="btn-icon-edit"
+                        aria-label="Sửa bàn"
                       >
-                        ✏️
+                        <IconEdit size={14} />
                       </button>
                       {table.status === 'EMPTY' && (
                         <button
+                          type="button"
                           title="Xóa bàn"
                           onClick={(e) => handleDeleteTable(table, e)}
-                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', fontSize: '14px' }}
+                          className="btn-icon-delete"
+                          aria-label="Xóa bàn"
                         >
-                          🗑
+                          <IconTrash size={14} />
                         </button>
                       )}
                     </div>
@@ -581,52 +744,53 @@ export const PosPage: React.FC = () => {
               loadTables();
             }
           }}
-          title={`Gọi Món — ${activeTable.name} (${activeTable.code})`}
+          title={`Bàn ${activeTable.name} (${activeTable.code}) — Bàn Điều Khiển Gọi Món`}
+          maxWidth="1020px"
         >
-          <div style={{ minWidth: '850px', maxWidth: '1050px', maxHeight: '75vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '78vh' }}>
             {orderError && (
-              <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', marginBottom: '12px', fontSize: '13px' }}>
-                {orderError}
+              <div className="alert alert-danger" style={{ marginBottom: '0.75rem' }}>
+                <IconAlertCircle size={16} />
+                <span>{orderError}</span>
               </div>
             )}
 
             {orderLoading ? (
-              <div style={{ padding: '40px', textAlign: 'center' }}>
-                <LoadingSpinner />
-                <p style={{ marginTop: '10px', color: '#94a3b8' }}>Đang tải thông tin đơn hàng...</p>
+              <div style={{ padding: '2.5rem', textAlign: 'center' }}>
+                <LoadingSpinner text="Đang tải dữ liệu đơn hàng..." />
               </div>
             ) : !activeOrder ? (
               <EmptyState title="Không có đơn hàng hoạt động" description="Không thể tìm thấy hoặc khởi tạo đơn hàng cho bàn này." />
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', flex: 1, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '1.25rem', overflow: 'hidden' }}>
                 {/* CỘT TRÁI: THỰC ĐƠN CHỌN MÓN */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflow: 'hidden' }}>
+                  <div className="search-input-wrap">
+                    <IconSearch size={16} className="text-dim" />
                     <input
                       type="text"
-                      className="form-control"
-                      placeholder="Tìm món nhanh..."
+                      className="search-input"
+                      placeholder="Tìm kiếm món ăn theo tên..."
                       value={menuSearch}
                       onChange={(e) => setMenuSearch(e.target.value)}
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
                     />
+                    {menuSearch && (
+                      <button
+                        type="button"
+                        className="search-clear-btn"
+                        onClick={() => setMenuSearch('')}
+                      >
+                        <IconClose size={14} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Category Filter Pills */}
-                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                  <div className="categories-tab-bar" style={{ paddingBottom: '0.2rem' }}>
                     <button
                       type="button"
+                      className={`category-pill ${selectedCategoryId === 'ALL' ? 'category-pill-active' : ''}`}
                       onClick={() => setSelectedCategoryId('ALL')}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '12px',
-                        borderRadius: '16px',
-                        border: 'none',
-                        background: selectedCategoryId === 'ALL' ? '#e11d48' : '#334155',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
                     >
                       Tất cả
                     </button>
@@ -634,17 +798,8 @@ export const PosPage: React.FC = () => {
                       <button
                         key={cat.id}
                         type="button"
+                        className={`category-pill ${selectedCategoryId === cat.id ? 'category-pill-active' : ''}`}
                         onClick={() => setSelectedCategoryId(cat.id)}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: '12px',
-                          borderRadius: '16px',
-                          border: 'none',
-                          background: selectedCategoryId === cat.id ? '#e11d48' : '#334155',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
                       >
                         {cat.name}
                       </button>
@@ -652,28 +807,27 @@ export const PosPage: React.FC = () => {
                   </div>
 
                   {/* Danh sách món ăn có thể gọi */}
-                  <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', paddingRight: '4px' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem', paddingRight: '0.25rem', maxHeight: '420px' }}>
                     {filteredMenuItems.map(item => {
                       const isAvailable = item.status === 'AVAILABLE';
                       return (
                         <div
                           key={item.id}
+                          className="card"
                           style={{
-                            background: '#0f172a',
-                            borderRadius: '10px',
-                            border: '1px solid #334155',
-                            padding: '12px',
+                            padding: '0.75rem',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
                             opacity: isAvailable ? 1 : 0.6,
+                            background: isAvailable ? '#ffffff' : 'var(--bg-surface-subtle)',
                           }}
                         >
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: '14px', color: '#f8fafc', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', marginBottom: '0.2rem' }}>
                               {item.name}
                             </div>
-                            <div style={{ color: '#38bdf8', fontWeight: 700, fontSize: '13px', marginBottom: '8px' }}>
+                            <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.88rem', marginBottom: '0.5rem' }} className="tabular-nums">
                               {formatCurrency(item.price)}
                             </div>
                           </div>
@@ -682,23 +836,25 @@ export const PosPage: React.FC = () => {
                             <div>
                               <input
                                 type="text"
-                                placeholder="Ghi chú (ít cay...)"
+                                className="form-control"
+                                placeholder="Ghi chú (ít ngọt, không cay...)"
                                 value={itemNotes[item.id] || ''}
                                 onChange={(e) => setItemNotes({ ...itemNotes, [item.id]: e.target.value })}
-                                style={{ width: '100%', boxSizing: 'border-box', padding: '4px 8px', fontSize: '11px', borderRadius: '4px', background: '#1e293b', border: '1px solid #334155', color: '#fff', marginBottom: '6px' }}
+                                style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', marginBottom: '0.4rem' }}
                               />
                               <Button
                                 variant="primary"
                                 size="sm"
                                 disabled={orderItemSubmitting}
                                 onClick={() => handleAddItemToOrder(item)}
-                                style={{ width: '100%', fontSize: '12px', padding: '6px 0' }}
+                                style={{ width: '100%', fontSize: '0.8rem' }}
+                                icon={<IconPlus size={14} />}
                               >
-                                + Thêm vào đơn
+                                Thêm vào đơn
                               </Button>
                             </div>
                           ) : (
-                            <div style={{ textAlign: 'center', padding: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
+                            <div style={{ textAlign: 'center', padding: '0.35rem', background: 'var(--danger-bg)', color: '#b91c1c', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', fontWeight: 700 }}>
                               HẾT MÓN
                             </div>
                           )}
@@ -709,76 +865,103 @@ export const PosPage: React.FC = () => {
                 </div>
 
                 {/* CỘT PHẢI: CHI TIẾT ĐƠN HÀNG ĐANG PHỤC VỤ */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: '#0f172a', borderRadius: '12px', border: '1px solid #334155', padding: '16px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'var(--bg-canvas)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border-subtle)',
+                    padding: '1rem',
+                    overflow: 'hidden',
+                  }}
+                >
                   {/* Order Meta Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '10px', marginBottom: '10px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      paddingBottom: '0.65rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
                     <div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>MÃ ĐƠN HÀNG</div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b' }}>{activeOrder.orderCode}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 700 }}>MÃ ĐƠN HÀNG</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)' }} className="tabular-nums">
+                        {activeOrder.orderCode}
+                      </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>NHÂN VIÊN</div>
-                      <div style={{ fontSize: '13px', color: '#f8fafc' }}>{activeOrder.createdByName}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 700 }}>PHỤC VỤ</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                        {activeOrder.createdByName || user?.fullName}
+                      </div>
                     </div>
                   </div>
 
                   {/* List of ordered items */}
-                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.25rem', maxHeight: '250px' }}>
                     {activeOrder.items.length === 0 ? (
-                      <div style={{ textAlign: 'center', color: '#64748b', padding: '30px 0' }}>
-                        Chưa có món nào trong đơn.
-                        <br />
-                        <span style={{ fontSize: '12px' }}>Chọn món từ thực đơn bên trái để thêm vào.</span>
+                      <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
+                        <p style={{ fontWeight: 600 }}>Chưa có món nào trong đơn.</p>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Nhấn vào món bên trái để thêm gọi món.</span>
                       </div>
                     ) : (
                       activeOrder.items.map(item => (
                         <div
                           key={item.id}
                           style={{
-                            background: '#1e293b',
-                            borderRadius: '8px',
-                            padding: '10px 12px',
+                            background: '#ffffff',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-subtle)',
+                            padding: '0.6rem 0.75rem',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            gap: '8px',
+                            gap: '0.5rem',
                           }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: '13px', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {item.itemName}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} className="tabular-nums">
                               {formatCurrency(item.priceAtOrder)}
-                              {item.note && <span style={{ color: '#f59e0b', marginLeft: '6px' }}>({item.note})</span>}
+                              {item.note && <span style={{ color: 'var(--status-occupied)', marginLeft: '0.35rem' }}>({item.note})</span>}
                             </div>
                           </div>
 
                           {/* Quantity control */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <button
                               type="button"
                               disabled={orderItemSubmitting}
                               onClick={() => handleUpdateItemQuantity(item, -1)}
-                              style={{ width: '24px', height: '24px', borderRadius: '4px', background: '#334155', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              className="btn btn-secondary btn-sm"
+                              style={{ width: '24px', height: '24px', padding: 0 }}
+                              aria-label="Giảm"
                             >
                               -
                             </button>
-                            <span style={{ fontSize: '13px', fontWeight: 700, minWidth: '18px', textAlign: 'center', color: '#f8fafc' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, minWidth: '20px', textAlign: 'center', color: 'var(--text-main)' }} className="tabular-nums">
                               {item.quantity}
                             </span>
                             <button
                               type="button"
                               disabled={orderItemSubmitting}
                               onClick={() => handleUpdateItemQuantity(item, 1)}
-                              style={{ width: '24px', height: '24px', borderRadius: '4px', background: '#334155', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              className="btn btn-secondary btn-sm"
+                              style={{ width: '24px', height: '24px', padding: 0 }}
+                              aria-label="Tăng"
                             >
                               +
                             </button>
                           </div>
 
                           {/* Line subtotal */}
-                          <div style={{ minWidth: '70px', textAlign: 'right', fontWeight: 700, fontSize: '13px', color: '#38bdf8' }}>
+                          <div style={{ minWidth: '75px', textAlign: 'right', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)' }} className="tabular-nums">
                             {formatCurrency(item.subtotal)}
                           </div>
 
@@ -788,23 +971,24 @@ export const PosPage: React.FC = () => {
                             title="Xóa món"
                             disabled={orderItemSubmitting}
                             onClick={() => handleRemoveItem(item.id)}
-                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '0.2rem' }}
+                            aria-label="Xóa món"
                           >
-                            ×
+                            <IconClose size={15} />
                           </button>
                         </div>
                       ))
                     )}
                   </div>
 
-                  {/* Financial Summary (Backend Calculated) */}
-                  <div style={{ borderTop: '1px solid #334155', paddingTop: '12px', marginTop: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#94a3b8', marginBottom: '6px' }}>
+                  {/* Financial Summary */}
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
                       <span>Tiền món (Tạm tính):</span>
-                      <span style={{ fontWeight: 600, color: '#f8fafc' }}>{formatCurrency(activeOrder.subtotalAmount)}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }} className="tabular-nums">{formatCurrency(activeOrder.subtotalAmount)}</span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#94a3b8', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                       <span>
                         Giảm giá:
                         <button
@@ -814,22 +998,32 @@ export const PosPage: React.FC = () => {
                             setDiscountError(null);
                             setDiscountModalOpen(true);
                           }}
-                          style={{ marginLeft: '8px', background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', textDecoration: 'underline', fontSize: '12px' }}
+                          style={{ marginLeft: '0.5rem', background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.78rem', fontWeight: 600 }}
                         >
                           {activeOrder.discountAmount > 0 ? 'Sửa' : '+ Thêm'}
                         </button>
                       </span>
-                      <span style={{ fontWeight: 600, color: '#22c55e' }}>-{formatCurrency(activeOrder.discountAmount)}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--status-empty)' }} className="tabular-nums">-{formatCurrency(activeOrder.discountAmount)}</span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, color: '#f8fafc', borderTop: '1px dashed #334155', paddingTop: '8px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '1.15rem',
+                        fontWeight: 800,
+                        color: 'var(--text-main)',
+                        borderTop: '1px dashed var(--border-strong)',
+                        paddingTop: '0.5rem',
+                      }}
+                    >
                       <span>Tổng thanh toán:</span>
-                      <span style={{ color: '#f59e0b' }}>{formatCurrency(activeOrder.finalAmount)}</span>
+                      <span style={{ color: 'var(--primary)' }} className="tabular-nums">{formatCurrency(activeOrder.finalAmount)}</span>
                     </div>
                   </div>
 
                   {/* Order Footer Actions */}
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                     <Button
                       variant="danger"
                       size="sm"
@@ -876,9 +1070,10 @@ export const PosPage: React.FC = () => {
                           setPaymentSubmitting(false);
                         }
                       }}
-                      style={{ flex: 2, background: '#10b981', borderColor: '#10b981', color: '#fff', fontWeight: 700 }}
+                      style={{ flex: 2, background: 'var(--status-empty)', borderColor: 'var(--status-empty)' }}
+                      icon={<IconCash size={16} />}
                     >
-                      💳 Thanh toán
+                      Thanh toán
                     </Button>
                   </div>
                 </div>
@@ -896,59 +1091,69 @@ export const PosPage: React.FC = () => {
           isOpen={tableModalOpen}
           onClose={() => setTableModalOpen(false)}
           title={tableEditing ? `Chỉnh sửa bàn: ${tableEditing.code}` : 'Thêm bàn ăn mới'}
+          maxWidth="440px"
         >
-          <form onSubmit={handleTableSubmit} style={{ width: '400px' }}>
+          <form onSubmit={handleTableSubmit} className="modal-form">
             {tableFormError && (
-              <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '6px', color: '#ef4444', marginBottom: '14px', fontSize: '13px' }}>
-                {tableFormError}
+              <div className="alert alert-danger">
+                <IconAlertCircle size={16} />
+                <span>{tableFormError}</span>
               </div>
             )}
 
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                Mã bàn * (Ví dụ: B11, VIP02)
-              </label>
+            <div className="form-group">
+              <label htmlFor="table-code">Mã bàn * (Ví dụ: B11, VIP02)</label>
               <input
+                id="table-code"
                 type="text"
                 className="form-control"
                 value={tableForm.code}
                 onChange={(e) => setTableForm({ ...tableForm, code: e.target.value })}
                 required
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
               />
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                Tên hiển thị * (Ví dụ: Bàn 11 - Tầng 2)
-              </label>
+            <div className="form-group">
+              <label htmlFor="table-name">Tên hiển thị * (Ví dụ: Bàn 11 - Tầng 2)</label>
               <input
+                id="table-name"
                 type="text"
                 className="form-control"
                 value={tableForm.name}
                 onChange={(e) => setTableForm({ ...tableForm, name: e.target.value })}
                 required
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
               />
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                Sức chứa / Số ghế *
-              </label>
+            <div className="form-group">
+              <label htmlFor="table-capacity">Sức chứa / Số ghế *</label>
               <input
+                id="table-capacity"
                 type="number"
                 min="1"
                 max="50"
-                className="form-control"
+                className="form-control tabular-nums"
                 value={tableForm.capacity}
-                onChange={(e) => setTableForm({ ...tableForm, capacity: parseInt(e.target.value) || 1 })}
+                onChange={(e) => setTableForm({ ...tableForm, capacity: parseInt(e.target.value, 10) || 1 })}
                 required
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="form-group">
+              <label htmlFor="table-status">Trạng thái bàn</label>
+              <select
+                id="table-status"
+                className="form-control"
+                value={tableForm.status || 'EMPTY'}
+                onChange={(e) => setTableForm({ ...tableForm, status: e.target.value as TableStatus })}
+              >
+                <option value="EMPTY">Trống (Sẵn sàng phục vụ)</option>
+                <option value="RESERVED">Đã đặt trước (Giữ chỗ)</option>
+                <option value="OCCUPIED">Đang phục vụ (Có khách)</option>
+              </select>
+            </div>
+
+            <div className="modal-actions">
               <Button variant="secondary" type="button" onClick={() => setTableModalOpen(false)}>
                 Hủy bỏ
               </Button>
@@ -961,26 +1166,80 @@ export const PosPage: React.FC = () => {
       )}
 
       {/* ========================================================= */}
+      {/* MODAL XÁC NHẬN ĐẶT BÀN / GIỮ CHỖ                          */}
+      {/* ========================================================= */}
+      {reserveModalOpen && tableToReserve && (
+        <Modal
+          isOpen={reserveModalOpen}
+          onClose={() => setReserveModalOpen(false)}
+          title={`Đặt Trước / Giữ Chỗ Bàn — ${tableToReserve.code}`}
+          maxWidth="440px"
+        >
+          <div style={{ lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', fontSize: '0.9rem' }}>
+              Bạn đang chuyển bàn <strong>{tableToReserve.name} ({tableToReserve.code})</strong> sang trạng thái <strong>Đã đặt trước (RESERVED)</strong> để giữ chỗ cho khách.
+            </p>
+
+            <div
+              style={{
+                background: 'var(--status-reserved-bg)',
+                border: '1px solid var(--status-reserved-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.75rem 1rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.825rem',
+                color: 'var(--status-reserved)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                <IconCalendar size={15} />
+                <span>Quy mô: {tableToReserve.capacity} chỗ ngồi</span>
+              </div>
+              <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-main)', fontSize: '0.8rem' }}>
+                Khi khách đến nhận bàn, nhấn nút <strong>"Nhận bàn"</strong> để mở đơn và gọi món phục vụ ngay.
+              </p>
+            </div>
+
+            <div className="modal-actions">
+              <Button variant="secondary" type="button" onClick={() => setReserveModalOpen(false)}>
+                Hủy bỏ
+              </Button>
+              <Button
+                variant="primary"
+                type="button"
+                isLoading={reserveSubmitting}
+                onClick={handleConfirmReserveTable}
+                icon={<IconCheckCircle size={16} />}
+              >
+                Xác nhận đặt bàn
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ========================================================= */}
       {/* MODAL ÁP DỤNG GIẢM GIÁ                                    */}
       {/* ========================================================= */}
       {discountModalOpen && (
         <Modal
           isOpen={discountModalOpen}
           onClose={() => setDiscountModalOpen(false)}
-          title="Áp dụng giảm giá cho đơn hàng"
+          title="Áp Dụng Giảm Giá Cho Đơn Hàng"
+          maxWidth="400px"
         >
-          <form onSubmit={handleApplyDiscountSubmit} style={{ width: '360px' }}>
+          <form onSubmit={handleApplyDiscountSubmit} className="modal-form">
             {discountError && (
-              <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '6px', color: '#ef4444', marginBottom: '12px', fontSize: '13px' }}>
-                {discountError}
+              <div className="alert alert-danger">
+                <IconAlertCircle size={16} />
+                <span>{discountError}</span>
               </div>
             )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
-                Số tiền giảm giá (VNĐ)
-              </label>
+            <div className="form-group">
+              <label htmlFor="discount-amount">Số tiền giảm giá (VNĐ)</label>
               <input
+                id="discount-amount"
                 type="number"
                 min="0"
                 step="1000"
@@ -989,14 +1248,14 @@ export const PosPage: React.FC = () => {
                 onChange={(e) => setDiscountInput(e.target.value)}
                 autoFocus
                 required
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
+                className="form-control tabular-nums"
               />
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
                 Tối đa: {formatCurrency(activeOrder?.subtotalAmount)}
-              </div>
+              </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="modal-actions">
               <Button variant="secondary" type="button" onClick={() => setDiscountModalOpen(false)}>
                 Hủy
               </Button>
@@ -1015,35 +1274,35 @@ export const PosPage: React.FC = () => {
         <Modal
           isOpen={cancelModalOpen}
           onClose={() => setCancelModalOpen(false)}
-          title="Xác nhận hủy đơn hàng"
+          title="Xác Nhận Hủy Đơn Hàng"
+          maxWidth="420px"
         >
-          <form onSubmit={handleCancelOrderSubmit} style={{ width: '380px' }}>
+          <form onSubmit={handleCancelOrderSubmit} className="modal-form">
             {cancelError && (
-              <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '6px', color: '#ef4444', marginBottom: '12px', fontSize: '13px' }}>
-                {cancelError}
+              <div className="alert alert-danger">
+                <IconAlertCircle size={16} />
+                <span>{cancelError}</span>
               </div>
             )}
 
-            <p style={{ color: '#e2e8f0', fontSize: '14px', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-main)', fontSize: '0.88rem', lineHeight: 1.5 }}>
               Bạn có chắc chắn muốn hủy đơn hàng <strong>{activeOrder?.orderCode}</strong> tại <strong>{activeTable?.name}</strong>? Bàn ăn sẽ được giải phóng về trạng thái Trống.
             </p>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                Lý do hủy đơn *
-              </label>
+            <div className="form-group">
+              <label htmlFor="cancel-reason">Lý do hủy đơn *</label>
               <textarea
+                id="cancel-reason"
                 className="form-control"
                 rows={3}
-                placeholder="Ví dụ: Khách đổi ý, khách có việc gấp ra về..."
+                placeholder="Ví dụ: Khách đổi ý, bàn chuyển chỗ..."
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 required
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="modal-actions">
               <Button variant="secondary" type="button" onClick={() => setCancelModalOpen(false)}>
                 Không hủy
               </Button>
@@ -1056,7 +1315,7 @@ export const PosPage: React.FC = () => {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL THANH TOÁN (GIAI ĐOẠN 9 - CASH & QR TRANSFER)      */}
+      {/* MODAL THANH TOÁN (CASH & QR TRANSFER)                     */}
       {/* ========================================================= */}
       {paymentModalOpen && paymentPreview && (
         <Modal
@@ -1065,6 +1324,7 @@ export const PosPage: React.FC = () => {
             if (!paymentSubmitting) setPaymentModalOpen(false);
           }}
           title={`Thanh Toán — ${paymentPreview.orderCode} (${paymentPreview.tableName})`}
+          maxWidth="480px"
         >
           <form
             onSubmit={async (e) => {
@@ -1095,56 +1355,77 @@ export const PosPage: React.FC = () => {
                 setPaymentSubmitting(false);
               }
             }}
-            style={{ width: '460px' }}
+            className="modal-form"
           >
             {paymentError && (
-              <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', marginBottom: '14px', fontSize: '13px' }}>
-                {paymentError}
+              <div className="alert alert-danger">
+                <IconAlertCircle size={16} />
+                <span>{paymentError}</span>
               </div>
             )}
 
             {/* Bill Preview Total */}
-            <div style={{ background: '#0f172a', padding: '14px 18px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#94a3b8', marginBottom: '4px' }}>
+            <div
+              style={{
+                background: 'var(--bg-canvas)',
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 <span>Tiền món:</span>
-                <span>{formatCurrency(paymentPreview.subtotalAmount)}</span>
+                <span className="tabular-nums">{formatCurrency(paymentPreview.subtotalAmount)}</span>
               </div>
               {paymentPreview.discountAmount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#22c55e', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--status-empty)', marginBottom: '0.25rem' }}>
                   <span>Giảm giá:</span>
-                  <span>-{formatCurrency(paymentPreview.discountAmount)}</span>
+                  <span className="tabular-nums">-{formatCurrency(paymentPreview.discountAmount)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 800, color: '#f59e0b', borderTop: '1px solid #334155', paddingTop: '8px', marginTop: '6px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  color: 'var(--text-main)',
+                  borderTop: '1px solid var(--border-subtle)',
+                  paddingTop: '0.5rem',
+                  marginTop: '0.35rem',
+                }}
+              >
                 <span>Cần thanh toán:</span>
-                <span>{formatCurrency(paymentPreview.finalAmount)}</span>
+                <span style={{ color: 'var(--primary)' }} className="tabular-nums">
+                  {formatCurrency(paymentPreview.finalAmount)}
+                </span>
               </div>
             </div>
 
             {/* Phương thức thanh toán */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '8px' }}>
-                Hình thức thanh toán *
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="form-group">
+              <label>Hình thức thanh toán *</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('CASH')}
                   style={{
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: paymentMethod === 'CASH' ? '2px solid #22c55e' : '1px solid #334155',
-                    background: paymentMethod === 'CASH' ? 'rgba(34, 197, 94, 0.12)' : '#0f172a',
-                    color: paymentMethod === 'CASH' ? '#22c55e' : '#fff',
-                    fontWeight: 600,
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: paymentMethod === 'CASH' ? '2px solid var(--status-empty)' : '1px solid var(--border-strong)',
+                    background: paymentMethod === 'CASH' ? 'var(--status-empty-bg)' : '#ffffff',
+                    color: paymentMethod === 'CASH' ? 'var(--status-empty)' : 'var(--text-main)',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px',
+                    gap: '0.45rem',
+                    fontSize: '0.88rem',
                   }}
                 >
-                  💵 Tiền mặt
+                  <IconCash size={18} />
+                  <span>Tiền mặt</span>
                 </button>
                 <button
                   type="button"
@@ -1153,46 +1434,48 @@ export const PosPage: React.FC = () => {
                     setAmountPaidInput(paymentPreview.finalAmount.toString());
                   }}
                   style={{
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: paymentMethod === 'BANK_TRANSFER' ? '2px solid #38bdf8' : '1px solid #334155',
-                    background: paymentMethod === 'BANK_TRANSFER' ? 'rgba(56, 189, 248, 0.12)' : '#0f172a',
-                    color: paymentMethod === 'BANK_TRANSFER' ? '#38bdf8' : '#fff',
-                    fontWeight: 600,
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: paymentMethod === 'BANK_TRANSFER' ? '2px solid var(--info)' : '1px solid var(--border-strong)',
+                    background: paymentMethod === 'BANK_TRANSFER' ? 'var(--info-bg)' : '#ffffff',
+                    color: paymentMethod === 'BANK_TRANSFER' ? 'var(--info)' : 'var(--text-main)',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px',
+                    gap: '0.45rem',
+                    fontSize: '0.88rem',
                   }}
                 >
-                  💳 Chuyển khoản QR
+                  <IconQr size={18} />
+                  <span>Chuyển khoản QR</span>
                 </button>
               </div>
             </div>
 
             {/* Khối tiền mặt */}
             {paymentMethod === 'CASH' ? (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
-                  Tiền khách đưa (VNĐ)
-                </label>
+              <div className="form-group">
+                <label htmlFor="amount-paid">Tiền khách đưa (VNĐ) *</label>
                 <input
+                  id="amount-paid"
                   type="number"
                   min={paymentPreview.finalAmount}
                   step="1000"
+                  className="form-control tabular-nums"
                   value={amountPaidInput}
                   onChange={(e) => setAmountPaidInput(e.target.value)}
                   required
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '16px', fontWeight: 700 }}
+                  style={{ fontSize: '1.05rem', fontWeight: 700 }}
                 />
 
                 {/* Quick Cash Buttons */}
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
                   <button
                     type="button"
+                    className="quick-btn"
                     onClick={() => setAmountPaidInput(paymentPreview.finalAmount.toString())}
-                    style={{ padding: '4px 8px', borderRadius: '4px', background: '#334155', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
                   >
                     Đủ tiền
                   </button>
@@ -1200,8 +1483,8 @@ export const PosPage: React.FC = () => {
                     <button
                       key={val}
                       type="button"
+                      className="quick-btn tabular-nums"
                       onClick={() => setAmountPaidInput(val.toString())}
-                      style={{ padding: '4px 8px', borderRadius: '4px', background: '#334155', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
                     >
                       {formatCurrency(val)}
                     </button>
@@ -1209,42 +1492,79 @@ export const PosPage: React.FC = () => {
                 </div>
 
                 {/* Tiền thừa tính tự động */}
-                <div style={{ marginTop: '12px', background: 'rgba(56, 189, 248, 0.08)', padding: '10px 14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', color: '#94a3b8' }}>Tiền thừa trả khách:</span>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#38bdf8' }}>
+                <div
+                  style={{
+                    marginTop: '0.65rem',
+                    background: 'var(--bg-canvas)',
+                    border: '1px solid var(--border-subtle)',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tiền thừa trả lại:</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--status-empty)' }} className="tabular-nums">
                     {formatCurrency(Math.max(0, (parseFloat(amountPaidInput) || 0) - paymentPreview.finalAmount))}
                   </span>
                 </div>
               </div>
             ) : (
               /* Khối chuyển khoản QR */
-              <div style={{ textAlign: 'center', background: '#0f172a', padding: '16px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '16px' }}>
-                <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '8px' }}>
-                  Quét mã QR để chuyển khoản chính xác:
+              <div
+                style={{
+                  textAlign: 'center',
+                  background: 'var(--bg-canvas)',
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  Quét mã QR qua ứng dụng ngân hàng:
                 </div>
-                <div style={{ width: '130px', height: '130px', margin: '0 auto 10px', background: '#fff', borderRadius: '8px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Mô phỏng VietQR */}
+                <div
+                  style={{
+                    width: '130px',
+                    height: '130px',
+                    margin: '0 auto 0.65rem',
+                    background: '#ffffff',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=REST_PAY_${paymentPreview.orderCode}_${paymentPreview.finalAmount}`}
                     alt="VietQR Payment"
                     style={{ width: '100%', height: '100%' }}
                   />
                 </div>
-                <div style={{ fontSize: '12px', color: '#f8fafc', fontWeight: 600 }}>
-                  Ngân hàng: MB Bank (Quân Đội) — STK: 8888.9999.6868
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', fontWeight: 700 }}>
+                  Ngân hàng: MB Bank • STK: 8888.9999.6868
                 </div>
-                <div style={{ fontSize: '12px', color: '#38bdf8', marginTop: '2px' }}>
-                  Nội dung CK: <strong>{paymentPreview.orderCode}</strong>
+                <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '0.15rem' }}>
+                  Nội dung CK: <strong className="tabular-nums">{paymentPreview.orderCode}</strong>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="modal-actions">
               <Button variant="secondary" type="button" onClick={() => setPaymentModalOpen(false)}>
                 Hủy bỏ
               </Button>
-              <Button variant="primary" type="submit" disabled={paymentSubmitting} style={{ background: '#10b981', borderColor: '#10b981' }}>
-                {paymentSubmitting ? 'Đang thanh toán...' : 'Xác nhận thanh toán'}
+              <Button
+                variant="primary"
+                type="submit"
+                disabled={paymentSubmitting}
+                style={{ background: 'var(--status-empty)', borderColor: 'var(--status-empty)' }}
+                icon={<IconCheckCircle size={16} />}
+              >
+                {paymentSubmitting ? 'Đang ghi nhận...' : 'Xác nhận thu tiền'}
               </Button>
             </div>
           </form>
@@ -1258,49 +1578,73 @@ export const PosPage: React.FC = () => {
         <Modal
           isOpen={receiptModalOpen}
           onClose={() => setReceiptModalOpen(false)}
-          title={`Biên Lai Thanh Toán — ${completedPayment.invoiceCode}`}
+          title={`Hóa Đơn Bán Hàng — ${completedPayment.invoiceCode}`}
+          maxWidth="440px"
         >
-          <div style={{ width: '420px', background: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid #334155', color: '#f8fafc' }}>
-            <div style={{ textAlign: 'center', borderBottom: '1px dashed #334155', paddingBottom: '14px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '28px', marginBottom: '4px' }}>✅</div>
-              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 800, color: '#22c55e' }}>
-                THANH TOÁN THÀNH CÔNG!
+          <div
+            style={{
+              background: '#ffffff',
+              padding: '1.25rem',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-main)',
+            }}
+          >
+            <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--border-strong)', paddingBottom: '0.85rem', marginBottom: '0.85rem' }}>
+              <div style={{ color: 'var(--status-empty)', marginBottom: '0.35rem' }}>
+                <IconCheckCircle size={32} strokeWidth={2} />
+              </div>
+              <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                HƯƠNG VIỆT RESTAURANT
               </h2>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Mã hóa đơn: <strong>{completedPayment.invoiceCode}</strong></div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Bàn: <strong>{completedPayment.tableName || 'Mang về'}</strong> đã được giải phóng về TRỐNG.</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Mã hóa đơn: <strong className="tabular-nums">{completedPayment.invoiceCode}</strong></div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Bàn: <strong>{completedPayment.tableName || 'Mang về'}</strong> • Đã thanh toán và giải phóng bàn
+              </div>
             </div>
 
-            <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+            <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
                 <span>Tổng tiền món:</span>
-                <span>{formatCurrency(completedPayment.subtotalAmount)}</span>
+                <span className="tabular-nums">{formatCurrency(completedPayment.subtotalAmount)}</span>
               </div>
               {completedPayment.discountAmount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#22c55e' }}>
-                  <span>Giảm giá:</span>
-                  <span>-{formatCurrency(completedPayment.discountAmount)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--status-empty)' }}>
+                  <span>Chiết khấu / Giảm giá:</span>
+                  <span className="tabular-nums">-{formatCurrency(completedPayment.discountAmount)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, color: '#f59e0b', borderTop: '1px solid #334155', paddingTop: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '1.15rem',
+                  fontWeight: 800,
+                  color: 'var(--primary)',
+                  borderTop: '1px dashed var(--border-strong)',
+                  paddingTop: '0.5rem',
+                  marginTop: '0.2rem',
+                }}
+              >
                 <span>Thực thu:</span>
-                <span>{formatCurrency(completedPayment.finalAmount)}</span>
+                <span className="tabular-nums">{formatCurrency(completedPayment.finalAmount)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
                 <span>Hình thức:</span>
                 <span>{completedPayment.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản QR'}</span>
               </div>
               {completedPayment.paymentMethod === 'CASH' && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#38bdf8', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--status-empty)', fontWeight: 600 }}>
                   <span>Tiền thối lại:</span>
-                  <span>{formatCurrency(completedPayment.changeAmount)}</span>
+                  <span className="tabular-nums">{formatCurrency(completedPayment.changeAmount)}</span>
                 </div>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '0.65rem' }}>
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 onClick={() => setReceiptModalOpen(false)}
                 style={{ flex: 1 }}
               >
@@ -1308,11 +1652,12 @@ export const PosPage: React.FC = () => {
               </Button>
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={() => window.print()}
                 style={{ flex: 1 }}
+                icon={<IconPrinter size={16} />}
               >
-                🖨 In hóa đơn
+                In hóa đơn
               </Button>
             </div>
           </div>
@@ -1321,3 +1666,5 @@ export const PosPage: React.FC = () => {
     </div>
   );
 };
+
+export default PosPage;

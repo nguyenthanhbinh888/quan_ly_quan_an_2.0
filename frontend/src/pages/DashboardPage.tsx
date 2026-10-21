@@ -6,6 +6,17 @@ import { DashboardSummary, DailyRevenue, TopSellingItem } from '../types/dashboa
 import { Button } from '../components/common/Button'
 import { Badge } from '../components/common/Badge'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
+import {
+  IconCash,
+  IconReceipt,
+  IconTrendingUp,
+  IconTable,
+  IconRefresh,
+  IconAlertCircle,
+  IconReport,
+  IconUtensils,
+  IconMenu,
+} from '../components/common/Icons'
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth()
@@ -107,40 +118,34 @@ export const DashboardPage: React.FC = () => {
         <div className="dashboard-title-group">
           <h1>Báo Cáo & Thống Kê Hoạt Động</h1>
           <p>
-            Xin chào <strong>{user?.fullName}</strong>! Tổng hợp chỉ số kinh doanh, hiệu suất bàn và các món ăn bán chạy
+            Xin chào <strong>{user?.fullName || user?.username}</strong>! Tổng hợp chỉ số kinh doanh, công suất bàn và phân tích món bán chạy
           </p>
         </div>
         <div className="dashboard-header-actions">
-          <span className="last-updated-tag">
-            Cập nhật lúc: {lastUpdated.toLocaleTimeString('vi-VN')}
+          <span className="last-updated-tag tabular-nums">
+            Cập nhật: {lastUpdated.toLocaleTimeString('vi-VN')}
           </span>
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={() => loadDashboardData(true)}
             isLoading={refreshing}
+            icon={<IconRefresh size={15} />}
           >
-            🔄 Làm mới
+            Làm mới dữ liệu
           </Button>
         </div>
       </div>
 
       {error && (
-        <div
-          style={{
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#f87171',
-            padding: '1rem',
-            borderRadius: '12px',
-          }}
-        >
-          ⚠️ Lỗi tải dữ liệu: {error}
+        <div className="alert alert-danger" role="alert">
+          <IconAlertCircle size={18} />
+          <span>Lỗi tải dữ liệu: {error}</span>
         </div>
       )}
 
       {loading ? (
-        <LoadingSpinner text="Đang tải dữ liệu kinh doanh và phân tích..." />
+        <LoadingSpinner text="Đang phân tích số liệu kinh doanh..." />
       ) : (
         <>
           {/* Top 4 KPI Cards */}
@@ -149,11 +154,13 @@ export const DashboardPage: React.FC = () => {
             <div className="kpi-card kpi-card-orange">
               <div className="kpi-top-row">
                 <span className="kpi-label">Doanh thu hôm nay</span>
-                <div className="kpi-icon-badge icon-orange">💰</div>
+                <div className="kpi-icon-badge icon-orange">
+                  <IconCash size={20} strokeWidth={2} />
+                </div>
               </div>
-              <div className="kpi-value">{formatCurrency(summary?.todayRevenue || 0)}</div>
+              <div className="kpi-value tabular-nums">{formatCurrency(summary?.todayRevenue || 0)}</div>
               <div className="kpi-subtext">
-                <span>⚡ Doanh thu thực nhận từ các đơn đã thanh toán hôm nay</span>
+                <span>Doanh thu thực nhận từ các đơn hoàn tất hôm nay</span>
               </div>
             </div>
 
@@ -161,11 +168,13 @@ export const DashboardPage: React.FC = () => {
             <div className="kpi-card kpi-card-green">
               <div className="kpi-top-row">
                 <span className="kpi-label">Hóa đơn hoàn tất</span>
-                <div className="kpi-icon-badge icon-green">🧾</div>
+                <div className="kpi-icon-badge icon-green">
+                  <IconReceipt size={20} strokeWidth={2} />
+                </div>
               </div>
-              <div className="kpi-value">{summary?.todayOrderCount || 0} đơn</div>
+              <div className="kpi-value tabular-nums">{summary?.todayOrderCount || 0} đơn</div>
               <div className="kpi-subtext">
-                <span>✅ Khách đã hoàn thành thanh toán trong ngày</span>
+                <span>Khách hàng đã thanh toán và bàn đã giải phóng</span>
               </div>
             </div>
 
@@ -173,24 +182,28 @@ export const DashboardPage: React.FC = () => {
             <div className="kpi-card kpi-card-cyan">
               <div className="kpi-top-row">
                 <span className="kpi-label">Giá trị TB / Đơn (AOV)</span>
-                <div className="kpi-icon-badge icon-cyan">📈</div>
+                <div className="kpi-icon-badge icon-cyan">
+                  <IconTrendingUp size={20} strokeWidth={2} />
+                </div>
               </div>
-              <div className="kpi-value">{formatCurrency(summary?.averageOrderValue || 0)}</div>
+              <div className="kpi-value tabular-nums">{formatCurrency(summary?.averageOrderValue || 0)}</div>
               <div className="kpi-subtext">
-                <span>🎯 Doanh thu bình quân trên mỗi hóa đơn hôm nay</span>
+                <span>Doanh thu bình quân trên mỗi hóa đơn trong ngày</span>
               </div>
             </div>
 
             {/* KPI 4: Công suất phục vụ bàn */}
             <div className="kpi-card kpi-card-purple">
               <div className="kpi-top-row">
-                <span className="kpi-label">Hiệu suất phục vụ bàn</span>
-                <div className="kpi-icon-badge icon-purple">🪑</div>
+                <span className="kpi-label">Công suất bàn hiện tại</span>
+                <div className="kpi-icon-badge icon-purple">
+                  <IconTable size={20} strokeWidth={2} />
+                </div>
               </div>
-              <div className="kpi-value">{summary?.occupancyRate || 0}%</div>
+              <div className="kpi-value tabular-nums">{summary?.occupancyRate || 0}%</div>
               <div className="kpi-subtext">
                 <span>
-                  Đang phục vụ {summary?.occupiedTables || 0} / {summary?.totalTables || 0} bàn
+                  Đang phục vụ {summary?.occupiedTables || 0} / {summary?.totalTables || 0} bàn ăn
                 </span>
               </div>
               <div className="kpi-progress-bar">
@@ -208,23 +221,29 @@ export const DashboardPage: React.FC = () => {
             <div className="dashboard-card">
               <div className="dashboard-card-header">
                 <div className="card-title-wrap">
-                  <h2>📊 Xu hướng Doanh thu</h2>
-                  <p>Biểu đồ doanh thu thực tế theo chu kỳ kinh doanh</p>
+                  <h2>
+                    <IconReport size={20} strokeWidth={2} />
+                    <span>Xu hướng Doanh thu</span>
+                  </h2>
+                  <p>Biểu đồ cột theo dõi doanh thu thực nhận theo chu kỳ</p>
                 </div>
                 <div className="filter-pills">
                   <button
+                    type="button"
                     className={`filter-pill ${period === 'today' ? 'active' : ''}`}
                     onClick={() => setPeriod('today')}
                   >
                     Hôm nay
                   </button>
                   <button
+                    type="button"
                     className={`filter-pill ${period === '7days' ? 'active' : ''}`}
                     onClick={() => setPeriod('7days')}
                   >
                     7 ngày
                   </button>
                   <button
+                    type="button"
                     className={`filter-pill ${period === '30days' ? 'active' : ''}`}
                     onClick={() => setPeriod('30days')}
                   >
@@ -238,19 +257,19 @@ export const DashboardPage: React.FC = () => {
                 <div className="chart-period-summary">
                   <div className="period-stat-item">
                     <span className="period-stat-label">Tổng doanh thu kỳ</span>
-                    <span className="period-stat-val" style={{ color: '#f97316' }}>
+                    <span className="period-stat-val tabular-nums" style={{ color: 'var(--primary)' }}>
                       {formatCurrency(totalPeriodRevenue)}
                     </span>
                   </div>
                   <div className="period-stat-item">
-                    <span className="period-stat-label">Tổng hóa đơn</span>
-                    <span className="period-stat-val" style={{ color: '#10b981' }}>
+                    <span className="period-stat-label">Tổng số hóa đơn</span>
+                    <span className="period-stat-val tabular-nums" style={{ color: 'var(--status-empty)' }}>
                       {totalPeriodOrders} đơn
                     </span>
                   </div>
                   <div className="period-stat-item">
-                    <span className="period-stat-label">TB / Ngày</span>
-                    <span className="period-stat-val" style={{ color: '#38bdf8' }}>
+                    <span className="period-stat-label">Bình quân / Ngày</span>
+                    <span className="period-stat-val tabular-nums" style={{ color: 'var(--info)' }}>
                       {formatCurrency(avgDailyRevenue)}
                     </span>
                   </div>
@@ -259,7 +278,7 @@ export const DashboardPage: React.FC = () => {
                 {/* Bar Chart Bars */}
                 {revenueData.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    Không có dữ liệu trong khoảng thời gian này
+                    Không có phát sinh doanh thu trong khoảng thời gian này
                   </div>
                 ) : (
                   <div className="bar-chart-track">
@@ -273,14 +292,14 @@ export const DashboardPage: React.FC = () => {
                         <div key={item.date} className="bar-column">
                           <div className="bar-tooltip">
                             <strong>{item.date}</strong>
-                            <div>{formatCurrency(item.revenue)}</div>
+                            <div className="tabular-nums">{formatCurrency(item.revenue)}</div>
                             <small>{item.orderCount} hóa đơn</small>
                           </div>
                           <div
                             className="bar-fill"
                             style={{ height: `${heightPercent}%` }}
                           />
-                          <span className="bar-label-date">
+                          <span className="bar-label-date tabular-nums">
                             {formatShortDate(item.date)}
                           </span>
                         </div>
@@ -295,16 +314,19 @@ export const DashboardPage: React.FC = () => {
             <div className="dashboard-card">
               <div className="dashboard-card-header">
                 <div className="card-title-wrap">
-                  <h2>🔥 Món Bán Chạy Nhất</h2>
-                  <p>Top các món ăn được khách hàng ưa chuộng</p>
+                  <h2>
+                    <IconUtensils size={20} strokeWidth={2} />
+                    <span>Món Bán Chạy Nhất</span>
+                  </h2>
+                  <p>Xếp hạng theo sản lượng đã phục vụ</p>
                 </div>
                 <Badge variant="warning">Top 5</Badge>
               </div>
 
               {topItems.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
-                  <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🍲</p>
-                  <p>Chưa có dữ liệu món ăn được bán</p>
+                  <IconUtensils size={36} strokeWidth={1.5} style={{ margin: '0 auto 0.5rem', display: 'block', color: 'var(--text-dim)' }} />
+                  <p style={{ fontWeight: 600 }}>Chưa có dữ liệu món ăn được bán</p>
                   <small style={{ color: 'var(--text-dim)' }}>
                     Các món ăn sẽ tự động xếp hạng khi phát sinh hóa đơn thanh toán
                   </small>
@@ -322,7 +344,7 @@ export const DashboardPage: React.FC = () => {
                             rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : ''
                           }`}
                         >
-                          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+                          {rank < 10 ? `0${rank}` : rank}
                         </div>
 
                         <div className="top-item-info">
@@ -341,8 +363,8 @@ export const DashboardPage: React.FC = () => {
                         </div>
 
                         <div className="top-item-numbers">
-                          <span className="top-item-qty">{item.quantitySold} phần</span>
-                          <span className="top-item-rev">{formatCurrency(item.totalRevenue)}</span>
+                          <span className="top-item-qty tabular-nums">{item.quantitySold} phần</span>
+                          <span className="top-item-rev tabular-nums">{formatCurrency(item.totalRevenue)}</span>
                         </div>
                       </div>
                     )
@@ -356,40 +378,55 @@ export const DashboardPage: React.FC = () => {
           <div className="launchpad-grid">
             <div className="launchpad-card">
               <div className="launchpad-header">
-                <h3>🪑 Sơ đồ Bàn & Thu ngân (POS)</h3>
+                <h3>Sơ đồ Bàn & Thu ngân (POS)</h3>
                 <Badge variant="success">Hoạt động</Badge>
               </div>
               <p>
                 Theo dõi trực quan bàn ăn theo màu sắc thời gian thực, mở bàn gọi món và thanh toán tiền mặt/chuyển khoản VietQR.
               </p>
-              <Button variant="primary" size="md" onClick={() => navigate('/pos')}>
-                Mở giao diện POS →
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => navigate('/pos')}
+                icon={<IconTable size={16} />}
+              >
+                Mở giao diện POS
               </Button>
             </div>
 
             <div className="launchpad-card">
               <div className="launchpad-header">
-                <h3>🍲 Quản lý Thực đơn & Giá bán</h3>
+                <h3>Quản lý Thực đơn & Giá bán</h3>
                 <Badge variant="info">Hoạt động</Badge>
               </div>
               <p>
                 Cập nhật danh sách món ăn, thay đổi đơn giá, phân loại danh mục món và bật tắt trạng thái Còn bán/Hết món tức thì.
               </p>
-              <Button variant="secondary" size="md" onClick={() => navigate('/menu')}>
-                Quản lý Thực đơn →
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => navigate('/menu')}
+                icon={<IconMenu size={16} />}
+              >
+                Quản lý Thực đơn
               </Button>
             </div>
 
             <div className="launchpad-card">
               <div className="launchpad-header">
-                <h3>🧾 Lịch sử Hóa đơn & Tra cứu</h3>
-                <Badge variant="warning">Hoạt động</Badge>
+                <h3>Lịch sử Hóa đơn & Tra cứu</h3>
+                <Badge variant="neutral">Hoạt động</Badge>
               </div>
               <p>
                 Tra cứu danh sách hóa đơn theo ngày, kiểm tra chi tiết thanh toán của từng bàn ăn và in lại hóa đơn biên lai khi cần.
               </p>
-              <Button variant="outline" size="md" onClick={() => navigate('/orders')}>
-                Xem Lịch sử Hóa đơn →
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => navigate('/orders')}
+                icon={<IconReceipt size={16} />}
+              >
+                Xem Lịch sử Hóa đơn
               </Button>
             </div>
           </div>

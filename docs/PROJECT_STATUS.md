@@ -1,7 +1,7 @@
 # Project Status - Tiến Độ Dự Án Quản Lý Quán Ăn
 
 ## Current phase
-**Giai đoạn 13 — Vận Hành, Bảo Trì & Mở Rộng Tính Năng (Operations & Maintenance)**
+**Giai đoạn 13 — Thiết Kế Lại Toàn Bộ Giao Diện Website (UI/UX Redesign) — HOÀN THÀNH 100%**
 
 ## Completed
 - [x] **Giai đoạn 0:** Chuẩn bị môi trường, kiểm tra công cụ, khởi tạo Git và cấu hình cơ sở.
@@ -16,36 +16,21 @@
 - [x] **Giai đoạn 9:** Thanh toán và hóa đơn (Payments & Invoices, 28/28 backend tests passed).
 - [x] **Giai đoạn 10:** Dashboard và báo cáo thống kê (Dashboard & Analytics Reports, 33/33 backend tests passed).
 - [x] **Giai đoạn 11:** Kiểm thử tích hợp toàn diện & Hoàn thiện hệ thống (E2E Testing, 42/42 backend tests passed, `docs/TEST_PLAN.md`).
-- [x] **Giai đoạn 12:** Đóng gói và Vận hành Local hoàn thiện (Packaging & Deployment):
-  - **Đóng gói sản phẩm Backend:** Build thành công file JAR độc lập `backend/target/restaurant-backend-0.0.1-SNAPSHOT.jar` (54MB, chứa embedded Tomcat, Flyway, MySQL driver).
-  - **Đóng gói Frontend:** Build thành công bản phân phối tĩnh `frontend/dist/` (0 lỗi TypeScript, 674ms).
-  - **Kịch bản khởi chạy 1-Click tự động:**
-    - `start-all.bat`: Tự động khởi chạy đồng thời Backend (port 8080) và Frontend (port 3000) trong 2 cửa sổ console độc lập.
-    - `start-backend.bat`: Khởi chạy riêng Backend service.
-    - `start-frontend.bat`: Khởi chạy riêng Frontend dev server.
-  - **Containerization (Tùy chọn):**
-    - `backend/Dockerfile`: Multi-stage build Eclipse Temurin 21 JRE Alpine an toàn, gọn nhẹ.
-    - `frontend/Dockerfile` & `frontend/nginx.conf`: Nginx Alpine phục vụ static React và reverse proxy `/api`.
-    - `docker-compose.yml`: Điều phối trọn gói cả 3 dịch vụ (MySQL 8.0, Backend, Frontend).
-  - **Tài liệu hướng dẫn:** Soạn thảo hoàn chỉnh [`docs/DEPLOYMENT.md`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/docs/DEPLOYMENT.md) gồm hướng dẫn chạy Native, chạy Docker, Smoke Test kiểm tra hệ thống, sao lưu và phục hồi CSDL bằng `mysqldump`, xử lý sự cố cổng và mạng.
-  - Cập nhật [`README.md`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/README.md) phản ánh lộ trình toàn diện.
+- [x] **Giai đoạn 12:** Đóng gói và Vận hành Local hoàn thiện (Packaging & Deployment, `docs/DEPLOYMENT.md`).
+- [x] **Giai đoạn 13 — Redesign UI/UX Toàn Bộ Giao Diện Website:**
+  - [x] **Bước 1 (Audit & Proposal):** Hoàn thành [`docs/UI_AUDIT.md`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/docs/UI_AUDIT.md) và [`docs/UI_DESIGN_SYSTEM.md`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/docs/UI_DESIGN_SYSTEM.md).
+  - [x] **Nhóm A (Tokens & Foundation):** Tạo bộ Icon Vector SVG thuần React [`Icons.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/components/common/Icons.tsx) (0 phụ thuộc bên ngoài), chuẩn hóa toàn bộ CSS Design Tokens nền sáng (`--bg-canvas: #f8f9fa`, `--bg-surface: #ffffff`, `--primary: #234e3a`), refactor [`MainLayout.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/layouts/MainLayout.tsx) và các component dùng chung (`Button.tsx`, `Badge.tsx`, `Modal.tsx`, `EmptyState.tsx`, `LoadingSpinner.tsx`).
+  - [x] **Nhóm B (Auth & Dashboard):** Redesign [`LoginPage.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/LoginPage.tsx) và [`DashboardPage.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/DashboardPage.tsx) với 4 thẻ KPI sáng rõ, biểu đồ cột CSS không phát sáng neon, danh sách top món ăn xếp hạng số `01`, `02` chuẩn mực.
+  - [x] **Nhóm C (Menu & Categories):** Redesign [`MenuPage.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/MenuPage.tsx) thẻ món ăn tinh tế, phân loại tab danh mục, nút chuyển trạng thái nhanh "Còn bán / Hết món", modal tạo/sửa món ăn sắc nét.
+  - [x] **Nhóm D (POS & Tables):** Redesign [`PosPage.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/PosPage.tsx) với sơ đồ bàn ăn trực quan phân biệt Bàn trống / Đang phục vụ / Đã đặt, giao diện chia đôi cột (Split View) gọi món nhanh, nút tăng giảm số lượng mượt mà.
+  - [x] **Nhóm E (Payments & Orders):** Redesign [`OrdersPage.tsx`](file:///c:/Users/Admin/.gemini/antigravity-ide/scratch/quan_ly_quan_an/frontend/src/pages/OrdersPage.tsx) với bảng kế toán căn phải cột tiền, font số đơn cách (`tabular-nums`), modal thanh toán Tiền mặt / VietQR, và modal in biên lai nhiệt chuẩn phong cách nhà hàng.
+  - [x] **Nhóm F & G (Phân quyền, Responsive & Regression Test):** Kiểm tra phân quyền ADMIN / STAFF trên mọi route, thanh sidebar thu gọn mượt mà trên màn hình nhỏ (Mobile/Tablet), không còn emoji trong UI, 42/42 backend test PASS, frontend build 0 lỗi.
 
 ## Tests and commands
-- Backend tests: `mvn test` trong `backend/` -> **PASS (42/42 tests passed, 0 failures, 0 errors)**.
-- Backend build: `mvn clean package -DskipTests` -> **PASS (Sinh file JAR thực thi 54MB)**.
-- Frontend build: `npm.cmd run build` trong `frontend/` -> **PASS (tsc & vite build thành công trong 674ms)**.
+- Backend tests: `mvn.cmd test` trong `backend/` -> **PASS (42/42 tests passed, 0 failures, 0 errors)**.
+- Backend server: Đang chạy local tại `http://localhost:8080/api/health` -> **HTTP 200 OK**.
+- Frontend build: `npm.cmd run build` trong `frontend/` -> **PASS (tsc & vite build 0 lỗi trong ~700ms)**.
+- Frontend dev server: Đang chạy local tại `http://localhost:3000/` -> **HTTP 200 OK**.
 
 ## Known issues
-- Không có lỗi kỹ thuật phát sinh. Hệ thống hoàn thiện 100% để vận hành tại Local.
-
-## Decisions awaiting approval
-- Nghiệm thu hoàn tất Giai đoạn 12.
-- Ứng dụng đã sẵn sàng đưa vào sử dụng và vận hành hàng ngày tại quán ăn.
-
-## Next step
-Hệ thống MVP đã hoàn thiện toàn diện. Khi có nhu cầu mở rộng trong tương lai:
-1. Tích hợp máy in hóa đơn nhiệt qua giao thức mạng ESC/POS.
-2. Quản lý kho nguyên vật liệu và định lượng món ăn.
-3. Tích hợp Webhook thanh toán ngân hàng tự động.
-
-
+- Không có lỗi tồn đọng. Tất cả 7 màn hình đã được loại bỏ hoàn toàn theme đen AI, gradient neon và emoji trang trí.

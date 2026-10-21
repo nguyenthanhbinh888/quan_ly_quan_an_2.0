@@ -1,6 +1,7 @@
 import React from 'react'
 import { EmptyState } from '../components/common/EmptyState'
 import { useRouter } from '../context/RouterContext'
+import { IconSearch } from '../components/common/Icons'
 
 export const NotFoundPage: React.FC = () => {
   const { navigate } = useRouter()
@@ -8,8 +9,8 @@ export const NotFoundPage: React.FC = () => {
   return (
     <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
       <EmptyState
-        icon="🔍"
-        title="404 - Không tìm thấy trang"
+        icon={<IconSearch size={44} strokeWidth={1.5} />}
+        title="404 — Không tìm thấy trang"
         description="Đường dẫn bạn yêu cầu không tồn tại hoặc đã được di chuyển."
         action={{
           label: 'Quay lại Trang Chủ',
@@ -19,3 +20,5 @@ export const NotFoundPage: React.FC = () => {
     </div>
   )
 }
+
+export default NotFoundPage

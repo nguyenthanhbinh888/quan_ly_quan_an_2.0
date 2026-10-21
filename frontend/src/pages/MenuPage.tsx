@@ -7,7 +7,19 @@ import { Badge } from '../components/common/Badge'
 import { Modal } from '../components/common/Modal'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { EmptyState } from '../components/common/EmptyState'
-import { ApiError } from '../services/apiClient'
+import { ApiError, getImageUrl } from '../services/apiClient'
+import { ImageUploadPicker } from '../components/common/ImageUploadPicker'
+import {
+  IconPlus,
+  IconUtensils,
+  IconSearch,
+  IconClose,
+  IconEdit,
+  IconTrash,
+  IconCheckCircle,
+  IconAlertCircle,
+  IconRefresh,
+} from '../components/common/Icons'
 
 export const MenuPage: React.FC = () => {
   const { isAdmin } = useAuth()
@@ -37,6 +49,7 @@ export const MenuPage: React.FC = () => {
 
   // Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
     description: '',
@@ -153,7 +166,30 @@ export const MenuPage: React.FC = () => {
     }
   }
 
-  // Submit Category Form
+  // Open Category Manager Modal
+  const handleOpenCategoryManager = () => {
+    setEditingCategory(null)
+    setCategoryFormData({ name: '', description: '', displayOrder: categories.length + 1 })
+    setIsCategoryModalOpen(true)
+  }
+
+  // Start Editing Category
+  const handleStartEditCategory = (cat: Category) => {
+    setEditingCategory(cat)
+    setCategoryFormData({
+      name: cat.name,
+      description: cat.description || '',
+      displayOrder: cat.displayOrder,
+    })
+  }
+
+  // Cancel Editing Category
+  const handleCancelEditCategory = () => {
+    setEditingCategory(null)
+    setCategoryFormData({ name: '', description: '', displayOrder: categories.length + 1 })
+  }
+
+  // Submit Category Form (Create or Update)
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!categoryFormData.name.trim()) {
@@ -163,16 +199,36 @@ export const MenuPage: React.FC = () => {
 
     setActionLoading(true)
     try {
-      await menuService.createCategory(categoryFormData)
-      showToast(`Đã tạo danh mục "${categoryFormData.name}" thành công!`)
-      setIsCategoryModalOpen(false)
+      if (editingCategory) {
+        await menuService.updateCategory(editingCategory.id, categoryFormData)
+        showToast(`Đã cập nhật danh mục "${categoryFormData.name}" thành công!`)
+        setEditingCategory(null)
+      } else {
+        await menuService.createCategory(categoryFormData)
+        showToast(`Đã tạo danh mục "${categoryFormData.name}" thành công!`)
+      }
       setCategoryFormData({ name: '', description: '', displayOrder: categories.length + 1 })
       loadData()
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Lỗi khi tạo danh mục')
+      alert(err instanceof Error ? err.message : 'Lỗi khi lưu danh mục')
     } finally {
       setActionLoading(false)
     }
+  }
+
+  // Request Delete Category
+  const handleRequestDeleteCategory = (cat: Category) => {
+    if ((cat.itemCount || 0) > 0) {
+      alert(
+        `Không thể xóa danh mục "${cat.name}" vì đang có ${cat.itemCount} món ăn.\n\nVui lòng xóa hoặc chuyển các món ăn thuộc danh mục này trước khi thực hiện xóa.`
+      )
+      return
+    }
+    setDeleteConfirmTarget({
+      type: 'CATEGORY',
+      id: cat.id,
+      name: cat.name,
+    })
   }
 
   // Confirm Delete
@@ -208,7 +264,8 @@ export const MenuPage: React.FC = () => {
       {/* Toast Notification */}
       {successMessage && (
         <div className="toast-notification">
-          <span>✅ {successMessage}</span>
+          <IconCheckCircle size={18} strokeWidth={2} />
+          <span>{successMessage}</span>
         </div>
       )}
 
@@ -216,16 +273,26 @@ export const MenuPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Quản Lý Thực Đơn & Món Ăn</h1>
-          <p className="page-subtitle">Danh mục món ăn, cập nhật bảng giá và quản lý tồn món ăn</p>
+          <p className="page-subtitle">Danh mục phân loại, bảng giá niêm yết và trạng thái tồn kho của món ăn</p>
         </div>
-        <div className="header-actions">
+        <div style={{ display: 'flex', gap: '0.65rem' }}>
           {isAdmin && (
             <>
-              <Button variant="secondary" size="md" onClick={() => setIsCategoryModalOpen(true)}>
-                ➕ Thêm danh mục
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={handleOpenCategoryManager}
+                icon={<IconPlus size={16} />}
+              >
+                Quản lý danh mục
               </Button>
-              <Button variant="primary" size="md" onClick={handleOpenCreateItem}>
-                🍲 Thêm món mới
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleOpenCreateItem}
+                icon={<IconUtensils size={16} />}
+              >
+                Thêm món mới
               </Button>
             </>
           )}
@@ -235,26 +302,50 @@ export const MenuPage: React.FC = () => {
       {/* Categories Tabs Bar */}
       <div className="categories-tab-bar">
         <button
+          type="button"
           className={`category-pill ${selectedCategoryId === null ? 'category-pill-active' : ''}`}
           onClick={() => setSelectedCategoryId(null)}
         >
           Tất cả ({categories.reduce((acc, c) => acc + (c.itemCount || 0), 0)})
         </button>
         {categories.map((cat) => (
-          <button
+          <div
             key={cat.id}
-            className={`category-pill ${selectedCategoryId === cat.id ? 'category-pill-active' : ''}`}
-            onClick={() => setSelectedCategoryId(cat.id)}
+            className={`category-pill-group ${selectedCategoryId === cat.id ? 'active' : ''}`}
           >
-            {cat.name} ({cat.itemCount || 0})
-          </button>
+            <button
+              type="button"
+              className={`category-pill ${selectedCategoryId === cat.id ? 'category-pill-active' : ''}`}
+              onClick={() => setSelectedCategoryId(cat.id)}
+            >
+              {cat.name} ({cat.itemCount || 0})
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="category-pill-remove-btn"
+                title={
+                  (cat.itemCount || 0) > 0
+                    ? `Danh mục có ${cat.itemCount} món ăn (Cần xóa hoặc chuyển món trước)`
+                    : `Xóa danh mục "${cat.name}"`
+                }
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleRequestDeleteCategory(cat)
+                }}
+                aria-label={`Xóa danh mục ${cat.name}`}
+              >
+                <IconClose size={12} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
       {/* Search & Filter Toolbar */}
       <div className="menu-filter-toolbar">
         <div className="search-input-wrap">
-          <span className="search-icon">🔍</span>
+          <IconSearch size={16} className="text-dim" />
           <input
             type="text"
             className="search-input"
@@ -263,14 +354,19 @@ export const MenuPage: React.FC = () => {
             onChange={(e) => setSearchKeyword(e.target.value)}
           />
           {searchKeyword && (
-            <button className="search-clear-btn" onClick={() => setSearchKeyword('')}>
-              ✕
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchKeyword('')}
+              aria-label="Xóa từ khóa tìm kiếm"
+            >
+              <IconClose size={14} />
             </button>
           )}
         </div>
 
         <div className="filter-group">
-          <label htmlFor="status-filter">Trạng thái:</label>
+          <label htmlFor="status-filter">Trạng thái bán:</label>
           <select
             id="status-filter"
             className="form-select"
@@ -289,24 +385,31 @@ export const MenuPage: React.FC = () => {
         <LoadingSpinner text="Đang tải danh sách món ăn..." />
       ) : errorMessage ? (
         <div className="alert alert-danger" style={{ marginTop: '1rem' }}>
-          <span>⚠️ {errorMessage}</span>
-          <Button variant="outline" size="sm" onClick={loadData} style={{ marginLeft: '1rem' }}>
+          <IconAlertCircle size={18} />
+          <span>{errorMessage}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadData}
+            style={{ marginLeft: '1rem' }}
+            icon={<IconRefresh size={14} />}
+          >
             Thử lại
           </Button>
         </div>
       ) : menuItems.length === 0 ? (
         <EmptyState
-          icon="🍲"
+          icon={<IconUtensils size={44} strokeWidth={1.5} />}
           title="Không tìm thấy món ăn nào"
           description={
             searchKeyword || selectedCategoryId || statusFilter !== 'ALL'
               ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem các món ăn khác.'
-              : 'Thực đơn hiện chưa có món ăn nào. Nhấn Thêm món mới để bắt đầu.'
+              : 'Thực đơn hiện chưa có món ăn nào. Nhấn Thêm món mới để bắt đầu thiết lập thực đơn.'
           }
           action={
             isAdmin
               ? {
-                  label: '➕ Thêm món đầu tiên',
+                  label: 'Thêm món đầu tiên',
                   onClick: handleOpenCreateItem,
                 }
               : undefined
@@ -319,16 +422,17 @@ export const MenuPage: React.FC = () => {
               <div className="dish-image-wrap">
                 {item.imageUrl ? (
                   <img
-                    src={item.imageUrl}
+                    src={getImageUrl(item.imageUrl)}
                     alt={item.name}
                     className="dish-image"
                     onError={(e) => {
-                      // Fallback if image fails to load
                       ;(e.target as HTMLElement).style.display = 'none'
                     }}
                   />
                 ) : (
-                  <div className="dish-image-fallback">🍽️</div>
+                  <div className="dish-image-fallback">
+                    <IconUtensils size={36} strokeWidth={1.5} />
+                  </div>
                 )}
                 <div className="dish-status-overlay">
                   <Badge variant={item.status === 'AVAILABLE' ? 'success' : 'danger'} dot>
@@ -341,10 +445,11 @@ export const MenuPage: React.FC = () => {
                 <div className="dish-category-tag">{item.categoryName}</div>
                 <h3 className="dish-name">{item.name}</h3>
                 {item.description && <p className="dish-description">{item.description}</p>}
-                <div className="dish-price">{formatVND(item.price)}</div>
+                <div className="dish-price tabular-nums">{formatVND(item.price)}</div>
 
                 <div className="dish-actions">
                   <button
+                    type="button"
                     className={`btn-action-status ${item.status === 'AVAILABLE' ? 'btn-status-red' : 'btn-status-green'}`}
                     onClick={() => handleToggleStatus(item)}
                     title={item.status === 'AVAILABLE' ? 'Báo hết món' : 'Báo còn bán'}
@@ -355,13 +460,16 @@ export const MenuPage: React.FC = () => {
                   {isAdmin && (
                     <div className="admin-dish-btns">
                       <button
+                        type="button"
                         className="btn-icon-edit"
                         onClick={() => handleOpenEditItem(item)}
-                        title="Chỉnh sửa món"
+                        title="Chỉnh sửa món ăn"
+                        aria-label="Chỉnh sửa"
                       >
-                        ✏️
+                        <IconEdit size={15} />
                       </button>
                       <button
+                        type="button"
                         className="btn-icon-delete"
                         onClick={() =>
                           setDeleteConfirmTarget({
@@ -370,9 +478,10 @@ export const MenuPage: React.FC = () => {
                             name: item.name,
                           })
                         }
-                        title="Xóa món"
+                        title="Xóa món ăn"
+                        aria-label="Xóa"
                       >
-                        🗑️
+                        <IconTrash size={15} />
                       </button>
                     </div>
                   )}
@@ -387,8 +496,8 @@ export const MenuPage: React.FC = () => {
       <Modal
         isOpen={isItemModalOpen}
         onClose={() => setIsItemModalOpen(false)}
-        title={editingItem ? '✏️ Chỉnh Sửa Món Ăn' : '🍲 Thêm Món Ăn Mới'}
-        maxWidth="560px"
+        title={editingItem ? 'Chỉnh Sửa Món Ăn' : 'Thêm Món Ăn Mới'}
+        maxWidth="540px"
       >
         <form onSubmit={handleSaveItem} className="modal-form">
           <div className="form-group">
@@ -428,7 +537,7 @@ export const MenuPage: React.FC = () => {
               type="number"
               step="1000"
               min="0"
-              className="form-control"
+              className="form-control tabular-nums"
               placeholder="Ví dụ: 125000"
               value={itemFormData.price}
               onChange={(e) => setItemFormData({ ...itemFormData, price: Number(e.target.value) })}
@@ -437,24 +546,20 @@ export const MenuPage: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="item-image">URL Hình ảnh món ăn</label>
-            <input
-              id="item-image"
-              type="url"
-              className="form-control"
-              placeholder="https://example.com/anh_mon_an.jpg"
+            <ImageUploadPicker
+              label="Hình ảnh món ăn"
               value={itemFormData.imageUrl}
-              onChange={(e) => setItemFormData({ ...itemFormData, imageUrl: e.target.value })}
+              onChange={(url) => setItemFormData({ ...itemFormData, imageUrl: url })}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="item-desc">Mô tả món ăn</label>
+            <label htmlFor="item-desc">Mô tả tóm tắt món ăn</label>
             <textarea
               id="item-desc"
               rows={3}
               className="form-control"
-              placeholder="Thành phần, hương vị, điểm đặc sắc của món..."
+              placeholder="Thành phần, đặc điểm, gợi ý thưởng thức..."
               value={itemFormData.description}
               onChange={(e) => setItemFormData({ ...itemFormData, description: e.target.value })}
             />
@@ -469,7 +574,7 @@ export const MenuPage: React.FC = () => {
               onChange={(e) => setItemFormData({ ...itemFormData, status: e.target.value as MenuItemStatus })}
             >
               <option value="AVAILABLE">Còn bán (Phục vụ bình thường)</option>
-              <option value="OUT_OF_STOCK">Hết món (Tạm ngừng)</option>
+              <option value="OUT_OF_STOCK">Hết món (Tạm ngừng nhận đơn)</option>
             </select>
           </div>
 
@@ -484,12 +589,15 @@ export const MenuPage: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Category Modal */}
+      {/* Category Manager Modal */}
       <Modal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        title="➕ Thêm Danh Mục Thực Đơn"
-        maxWidth="480px"
+        onClose={() => {
+          setIsCategoryModalOpen(false)
+          setEditingCategory(null)
+        }}
+        title={editingCategory ? 'Chỉnh Sửa Danh Mục' : 'Quản Lý & Thêm Danh Mục'}
+        maxWidth="540px"
       >
         <form onSubmit={handleSaveCategory} className="modal-form">
           <div className="form-group">
@@ -498,7 +606,7 @@ export const MenuPage: React.FC = () => {
               id="cat-name"
               type="text"
               className="form-control"
-              placeholder="Ví dụ: Lẩu & Nướng Than Hoa"
+              placeholder="Ví dụ: Món Nướng Than Hoa"
               value={categoryFormData.name}
               onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
               required
@@ -506,7 +614,7 @@ export const MenuPage: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="cat-desc">Mô tả tóm tắt</label>
+            <label htmlFor="cat-desc">Mô tả danh mục</label>
             <input
               id="cat-desc"
               type="text"
@@ -518,21 +626,86 @@ export const MenuPage: React.FC = () => {
           </div>
 
           <div className="modal-actions">
-            <Button type="button" variant="secondary" onClick={() => setIsCategoryModalOpen(false)}>
-              Hủy
+            {editingCategory && (
+              <Button type="button" variant="secondary" onClick={handleCancelEditCategory}>
+                Hủy sửa
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setIsCategoryModalOpen(false)
+                setEditingCategory(null)
+              }}
+            >
+              Đóng
             </Button>
             <Button type="submit" variant="primary" isLoading={actionLoading}>
-              Tạo danh mục
+              {editingCategory ? 'Lưu thay đổi' : 'Thêm danh mục'}
             </Button>
           </div>
         </form>
+
+        {/* Existing Categories Table/List */}
+        <div className="category-manager-section">
+          <div className="category-manager-header">
+            <span>Danh sách danh mục hiện có ({categories.length})</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+              Chỉ xóa được danh mục có 0 món ăn
+            </span>
+          </div>
+
+          <div className="category-manager-list">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className={`category-manager-item ${editingCategory?.id === cat.id ? 'editing' : ''}`}
+              >
+                <div className="category-item-info">
+                  <span className="category-item-name" title={cat.name}>
+                    {cat.name}
+                  </span>
+                  <span
+                    className={`category-item-badge ${(cat.itemCount || 0) > 0 ? 'has-items' : ''}`}
+                  >
+                    {cat.itemCount || 0} món
+                  </span>
+                </div>
+
+                <div className="category-item-actions">
+                  <button
+                    type="button"
+                    className="btn-cat-action"
+                    onClick={() => handleStartEditCategory(cat)}
+                    title="Chỉnh sửa tên danh mục"
+                  >
+                    <IconEdit size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-cat-action btn-cat-delete"
+                    onClick={() => handleRequestDeleteCategory(cat)}
+                    title={
+                      (cat.itemCount || 0) > 0
+                        ? `Không thể xóa (Đang có ${cat.itemCount} món)`
+                        : `Xóa danh mục "${cat.name}"`
+                    }
+                  >
+                    <IconTrash size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={!!deleteConfirmTarget}
         onClose={() => setDeleteConfirmTarget(null)}
-        title="⚠️ Xác Nhận Xóa"
+        title="Xác Nhận Xóa"
         maxWidth="440px"
       >
         <div style={{ lineHeight: 1.6 }}>
@@ -541,7 +714,7 @@ export const MenuPage: React.FC = () => {
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
             {deleteConfirmTarget?.type === 'CATEGORY'
               ? 'Lưu ý: Chỉ có thể xóa danh mục khi không còn món ăn nào thuộc danh mục này.'
-              : 'Thao tác này sẽ xóa món khỏi thực đơn.'}
+              : 'Thao tác này sẽ xóa món khỏi thực đơn và không thể hoàn tác.'}
           </p>
         </div>
 
@@ -557,3 +730,5 @@ export const MenuPage: React.FC = () => {
     </div>
   )
 }
+
+export default MenuPage

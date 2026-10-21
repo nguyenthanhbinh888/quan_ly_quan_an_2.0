@@ -130,6 +130,10 @@ public class OrderServiceImpl implements OrderService {
         MenuItemEntity menuItem = menuItemRepository.findById(request.getMenuItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + request.getMenuItemId()));
 
+        if (Boolean.TRUE.equals(menuItem.getIsDeleted())) {
+            throw new BadRequestException("Món ăn '" + menuItem.getName() + "' đã bị xóa khỏi thực đơn");
+        }
+
         if (menuItem.getStatus() != MenuItemStatus.AVAILABLE) {
             throw new BadRequestException("Món ăn '" + menuItem.getName() + "' hiện đã hết hàng (OUT_OF_STOCK)");
         }

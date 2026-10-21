@@ -29,12 +29,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories(boolean onlyActive) {
         List<CategoryEntity> categories = onlyActive
-                ? categoryRepository.findByActiveTrueOrderByDisplayOrderAsc()
-                : categoryRepository.findAll();
+                ? categoryRepository.findByActiveTrueAndIsDeletedFalseOrderByDisplayOrderAsc()
+                : categoryRepository.findByIsDeletedFalseOrderByDisplayOrderAsc();
 
         return categories.stream()
                 .map(cat -> {
-                    long count = menuItemRepository.countByCategoryId(cat.getId());
+                    long count = menuItemRepository.countByCategoryIdAndIsDeletedFalse(cat.getId());
                     return CategoryResponse.fromEntity(cat, count);
                 })
                 .collect(Collectors.toList());
@@ -45,14 +45,17 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryResponse getCategoryById(Long id) {
         CategoryEntity entity = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + id));
-        long count = menuItemRepository.countByCategoryId(entity.getId());
+        if (Boolean.TRUE.equals(entity.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + id);
+        }
+        long count = menuItemRepository.countByCategoryIdAndIsDeletedFalse(entity.getId());
         return CategoryResponse.fromEntity(entity, count);
     }
 
     @Override
     @Transactional
     public CategoryResponse createCategory(CategoryRequest request) {
-        if (categoryRepository.existsByName(request.getName().trim())) {
+        if (categoryRepository.existsByNameAndIsDeletedFalse(request.getName().trim())) {
             throw new ConflictException("Tên danh mục '" + request.getName().trim() + "' đã tồn tại");
         }
 
@@ -61,6 +64,7 @@ public class CategoryServiceImpl implements CategoryService {
         entity.setDescription(request.getDescription());
         entity.setDisplayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0);
         entity.setActive(request.getActive() != null ? request.getActive() : true);
+        entity.setIsDeleted(false);
 
         CategoryEntity saved = categoryRepository.save(entity);
         return CategoryResponse.fromEntity(saved, 0);
@@ -72,8 +76,12 @@ public class CategoryServiceImpl implements CategoryService {
         CategoryEntity entity = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + id));
 
+        if (Boolean.TRUE.equals(entity.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + id);
+        }
+
         String newName = request.getName().trim();
-        if (!entity.getName().equalsIgnoreCase(newName) && categoryRepository.existsByName(newName)) {
+        if (!entity.getName().equalsIgnoreCase(newName) && categoryRepository.existsByNameAndIsDeletedFalse(newName)) {
             throw new ConflictException("Tên danh mục '" + newName + "' đã tồn tại");
         }
 
@@ -87,7 +95,7 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         CategoryEntity updated = categoryRepository.save(entity);
-        long count = menuItemRepository.countByCategoryId(updated.getId());
+        long count = menuItemRepository.countByCategoryIdAndIsDeletedFalse(updated.getId());
         return CategoryResponse.fromEntity(updated, count);
     }
 
@@ -97,10 +105,15 @@ public class CategoryServiceImpl implements CategoryService {
         CategoryEntity entity = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + id));
 
-        if (menuItemRepository.existsByCategoryId(id)) {
+        if (menuItemRepository.existsByCategoryIdAndIsDeletedFalse(id)) {
             throw new ConflictException("Không thể xóa danh mục đang có món ăn. Vui lòng chuyển hoặc xóa các món ăn trước.");
         }
 
-        categoryRepository.delete(entity);
+        // Xóa mềm danh mục: đánh dấu isDeleted = true, active = false
+        // Đổi tên kèm hậu tố để giải phóng tên danh mục cho lần tạo mới sau này nếu cần
+        entity.setIsDeleted(true);
+        entity.setActive(false);
+        entity.setName(entity.getName() + " [DELETED_" + System.currentTimeMillis() + "]");
+        categoryRepository.save(entity);
     }
 }

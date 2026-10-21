@@ -12,11 +12,16 @@ import java.util.List;
 @Repository
 public interface MenuItemRepository extends JpaRepository<MenuItemEntity, Long> {
     List<MenuItemEntity> findByCategoryId(Long categoryId);
+    List<MenuItemEntity> findByCategoryIdAndIsDeletedFalse(Long categoryId);
     Page<MenuItemEntity> findByStatus(MenuItemStatus status, Pageable pageable);
+    Page<MenuItemEntity> findByStatusAndIsDeletedFalse(MenuItemStatus status, Pageable pageable);
     boolean existsByCategoryId(Long categoryId);
+    boolean existsByCategoryIdAndIsDeletedFalse(Long categoryId);
     long countByCategoryId(Long categoryId);
+    long countByCategoryIdAndIsDeletedFalse(Long categoryId);
 
     @org.springframework.data.jpa.repository.Query("SELECT m FROM MenuItemEntity m WHERE " +
+           "(m.isDeleted = false) AND " +
            "(:categoryId IS NULL OR m.category.id = :categoryId) AND " +
            "(:status IS NULL OR m.status = :status) AND " +
            "(:keyword IS NULL OR LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +

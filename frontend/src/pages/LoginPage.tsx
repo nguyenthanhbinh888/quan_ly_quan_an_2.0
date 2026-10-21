@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useRouter } from '../context/RouterContext'
 import { Button } from '../components/common/Button'
 import { ApiError } from '../services/apiClient'
+import { IconUtensils, IconAlertCircle } from '../components/common/Icons'
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth()
@@ -49,14 +50,16 @@ export const LoginPage: React.FC = () => {
     <div className="login-wrapper">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">🍽️</div>
-          <h1 className="login-title">Quản Lý Quán Ăn</h1>
-          <p className="login-subtitle">Đăng nhập hệ thống vận hành và thu ngân</p>
+          <div className="login-logo-box">
+            <IconUtensils size={24} strokeWidth={2} />
+          </div>
+          <h1 className="login-title">HƯƠNG VIỆT POS</h1>
+          <p className="login-subtitle">Hệ thống quản lý quán ăn & điều hành quầy thu ngân</p>
         </div>
 
         {errorMessage && (
           <div className="alert alert-danger" role="alert">
-            <span className="alert-icon">⚠️</span>
+            <IconAlertCircle size={18} />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -68,7 +71,7 @@ export const LoginPage: React.FC = () => {
               id="username"
               type="text"
               className="form-control"
-              placeholder="Nhập username (ví dụ: admin)"
+              placeholder="Nhập tên tài khoản (ví dụ: admin)"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={loading}
@@ -83,7 +86,7 @@ export const LoginPage: React.FC = () => {
               id="password"
               type="password"
               className="form-control"
-              placeholder="Nhập mật khẩu"
+              placeholder="Nhập mật khẩu truy cập"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
@@ -92,13 +95,19 @@ export const LoginPage: React.FC = () => {
             />
           </div>
 
-          <Button type="submit" variant="primary" size="lg" isLoading={loading} style={{ width: '100%', marginTop: '0.75rem' }}>
-            Đăng Nhập
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            isLoading={loading}
+            style={{ width: '100%', marginTop: '0.5rem' }}
+          >
+            Đăng Nhập Hệ Thống
           </Button>
         </form>
 
         <div className="quick-login-box">
-          <span className="quick-login-title">⚡ Tài khoản thử nghiệm nhanh:</span>
+          <span className="quick-login-title">Tài khoản demo (Click để tự động điền)</span>
           <div className="quick-buttons">
             <button
               type="button"
@@ -106,7 +115,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => fillCredentials('admin', 'Admin123@')}
               disabled={loading}
             >
-              👑 Admin (Chủ quán)
+              Admin (Quản trị viên)
             </button>
             <button
               type="button"
@@ -114,7 +123,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => fillCredentials('staff01', 'Admin123@')}
               disabled={loading}
             >
-              👔 Staff (Nhân viên)
+              Staff (Thu ngân)
             </button>
           </div>
         </div>
@@ -122,3 +131,5 @@ export const LoginPage: React.FC = () => {
     </div>
   )
 }
+
+export default LoginPage

@@ -49,6 +49,9 @@ public class MenuItemServiceImpl implements MenuItemService {
     public MenuItemResponse getMenuItemById(Long id) {
         MenuItemEntity entity = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id));
+        if (Boolean.TRUE.equals(entity.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id);
+        }
         return MenuItemResponse.fromEntity(entity);
     }
 
@@ -57,6 +60,10 @@ public class MenuItemServiceImpl implements MenuItemService {
     public MenuItemResponse createMenuItem(MenuItemRequest request) {
         CategoryEntity category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + request.getCategoryId()));
+
+        if (Boolean.TRUE.equals(category.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + request.getCategoryId());
+        }
 
         MenuItemEntity entity = new MenuItemEntity();
         entity.setCategory(category);
@@ -76,8 +83,16 @@ public class MenuItemServiceImpl implements MenuItemService {
         MenuItemEntity entity = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id));
 
+        if (Boolean.TRUE.equals(entity.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id);
+        }
+
         CategoryEntity category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + request.getCategoryId()));
+
+        if (Boolean.TRUE.equals(category.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy danh mục có ID = " + request.getCategoryId());
+        }
 
         entity.setCategory(category);
         entity.setName(request.getName().trim());
@@ -98,6 +113,10 @@ public class MenuItemServiceImpl implements MenuItemService {
         MenuItemEntity entity = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id));
 
+        if (Boolean.TRUE.equals(entity.getIsDeleted())) {
+            throw new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id);
+        }
+
         entity.setStatus(status);
         MenuItemEntity updated = menuItemRepository.save(entity);
         return MenuItemResponse.fromEntity(updated);
@@ -109,10 +128,9 @@ public class MenuItemServiceImpl implements MenuItemService {
         MenuItemEntity entity = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn có ID = " + id));
 
-        if (orderItemRepository.existsByMenuItemId(id)) {
-            throw new ConflictException("Không thể xóa món ăn đã từng được gọi trong đơn hàng. Bạn có thể chuyển sang trạng thái Hết món để ngừng bán.");
-        }
-
-        menuItemRepository.delete(entity);
+        // Xóa mềm: đánh dấu isDeleted = true để món ăn biến mất hoàn toàn khỏi thực đơn và POS
+        // đồng thời bảo toàn tính toàn vẹn dữ liệu cho các hóa đơn và báo cáo doanh thu lịch sử.
+        entity.setIsDeleted(true);
+        menuItemRepository.save(entity);
     }
 }
