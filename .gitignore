@@ -75,3 +75,18 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Reports and report generation scripts
+BAO_CAO_*
+build_*_report*.py
+generate_*_report*.py
+
+# Design markdown files & prompt guides
+giai_doan_*.md
+huong_dan_*.md
+docs/UI_DESIGN_SYSTEM.md
+docs/UI_AUDIT.md
+
+# Uploaded assets
+**/uploads/*
+!**/uploads/.gitkeep
