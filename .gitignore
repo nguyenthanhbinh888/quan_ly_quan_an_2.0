@@ -78,8 +78,8 @@ temp/
 
 # Reports and report generation scripts
 BAO_CAO_*
-build_*_report*.py
-generate_*_report*.py
+build_*.py
+generate_*.py
 
 # Design markdown files & prompt guides
 giai_doan_*.md
